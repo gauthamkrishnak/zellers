@@ -5,6 +5,8 @@ import Categories from "../components/categories";
 import Productcard from "../components/productcard";
 import Products from "../data/products";
 import { useOutletContext } from "react-router-dom";
+import { increment, decrement, reset } from "../features/counter/counterSlice";
+import { useDispatch } from "react-redux";
 
 function Home() {
   const [selectedcategory, setselectedcategory] = useState("All");
@@ -15,6 +17,10 @@ function Home() {
     return storedWishlist ? JSON.parse(storedWishlist) : [];
   });
 
+  const dispatch = useDispatch();
+  dispatch(increment());
+
+  // console.log("inititaldataa", )
   // Save wishlist whenever it changes
   useEffect(() => {
     localStorage.setItem("wishlist", JSON.stringify(wishlist));

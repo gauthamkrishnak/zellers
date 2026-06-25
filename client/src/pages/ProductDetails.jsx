@@ -5,13 +5,15 @@ import { useState } from "react";
 import Products from "../data/products";
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
+import { useSelector } from "react-redux";
 
 function ProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-
   const [searchTerm, setSearchTerm] = useState("");
 
+  const data = useSelector((state) => state.counter.value);
+  console.log("dataaaaa", data);
   const product = Products.find((product) => product.id === Number(id));
 
   if (!product) {
