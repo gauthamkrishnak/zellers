@@ -17,7 +17,8 @@ function ProductCard(props) {
 
   return (
     <div
-      onClick={() => navigate(`/product/${id}`)}
+      //url cannot have spaces
+      onClick={() => navigate(`/product/${id}/${title.replaceAll(" ", "-")}`)}
       className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition cursor-pointer hover:scale-105"
     >
       <div className="relative h-56 md:h-56 bg-white flex items-center justify-center">
