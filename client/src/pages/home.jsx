@@ -3,9 +3,8 @@ import { useState, useEffect } from "react";
 import Hero from "../components/hero";
 import Categories from "../components/categories";
 import Productcard from "../components/productcard";
-import Products from "../data/products";
+import { useSelector } from "react-redux";
 import { useOutletContext } from "react-router-dom";
-import { increment, decrement, reset } from "../features/counter/counterSlice";
 import { useDispatch } from "react-redux";
 
 function Home() {
@@ -16,9 +15,9 @@ function Home() {
     const storedWishlist = localStorage.getItem("wishlist");
     return storedWishlist ? JSON.parse(storedWishlist) : [];
   });
+  const products = useSelector((state) => state.products.products);
 
-  const dispatch = useDispatch();
-  dispatch(increment());
+  <button onClick={() => dispatch(increment())}>Increment</button>;
 
   // console.log("inititaldataa", )
   // Save wishlist whenever it changes
@@ -36,7 +35,7 @@ function Home() {
   };
 
   // Filter products
-  const filteredProducts = Products.filter((product) => {
+  const filteredProducts = products.filter((product) => {
     // Category filter
     const matchesCategory =
       selectedcategory === "All" || product.type === selectedcategory;
@@ -87,6 +86,7 @@ function Home() {
               {filteredProducts.map((Product) => (
                 <Productcard
                   // Always provide a unique key while mapping
+                  key={Product.id}
                   id={Product.id}
                   title={Product.title}
                   price={Product.price}

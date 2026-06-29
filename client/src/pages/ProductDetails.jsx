@@ -1,8 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
-
-import Products from "../data/products";
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
 import { useSelector } from "react-redux";
@@ -12,9 +10,9 @@ function ProductDetails() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
 
-  const data = useSelector((state) => state.counter.value);
-  console.log("dataaaaa", data);
-  const product = Products.find((product) => product.id === Number(id));
+  const products = useSelector((state) => state.products.products);
+
+  const product = products.find((product) => product.id === Number(id));
 
   if (!product) {
     return <h1 className="text-center text-2xl mt-10">Product Not Found</h1>;
