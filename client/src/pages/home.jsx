@@ -1,38 +1,15 @@
-import { useState, useEffect } from "react";
-
+import { useState } from "react";
 import Hero from "../components/hero";
 import Categories from "../components/categories";
 import Productcard from "../components/productcard";
 import { useSelector } from "react-redux";
 import { useOutletContext } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { Search } from "lucide-react";
 
 function Home() {
   const [selectedcategory, setselectedcategory] = useState("All");
   const { searchTerm } = useOutletContext();
-  // Load wishlist from localStorage when component mounts
-  const [wishlist, setWishlist] = useState(() => {
-    const storedWishlist = localStorage.getItem("wishlist");
-    return storedWishlist ? JSON.parse(storedWishlist) : [];
-  });
   const products = useSelector((state) => state.products.products);
-
-  <button onClick={() => dispatch(increment())}>Increment</button>;
-
-  // console.log("inititaldataa", )
-  // Save wishlist whenever it changes
-  useEffect(() => {
-    localStorage.setItem("wishlist", JSON.stringify(wishlist));
-  }, [wishlist]);
-
-  // Add/Remove product from wishlist
-  const toggleWishlist = (id) => {
-    if (wishlist.includes(id)) {
-      setWishlist(wishlist.filter((item) => item !== id));
-    } else {
-      setWishlist([...wishlist, id]);
-    }
-  };
 
   // Filter products
   const filteredProducts = products.filter((product) => {
@@ -52,54 +29,68 @@ function Home() {
   });
 
   return (
-    <div>
+    <div className="flex flex-col gap-8 pb-16">
+      {/* Hero Banner */}
       <Hero />
 
-      <div className="flex flex-col lg:flex-row justify-between px-4 md:px-8 lg:px-14 py-4 gap-6">
-        <div className="w-full lg:w-auto lg:pl-14">
+      {/* Main Section */}
+      <div 
+        id="featured-products-section" 
+        className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row gap-8 scroll-mt-24"
+      >
+        {/* Categories Sidebar */}
+        <aside className="w-full lg:w-64 shrink-0">
           <Categories
             selectedcategory={selectedcategory}
             setselectedcategory={setselectedcategory}
           />
-        </div>
+        </aside>
 
-        <div className="w-full lg:w-[75%] lg:pr-14">
-          <h2 className="text-2xl md:text-3xl font-bold pb-3">
-            Featured Products
-          </h2>
+        {/* Products Grid */}
+        <main className="flex-1">
+          <div className="flex items-center justify-between border-b border-slate-200/60 pb-4 mb-6">
+            <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">
+              {selectedcategory === "All" ? "Featured Products" : `${selectedcategory} Listings`}
+            </h2>
+            <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
+              {filteredProducts.length} {filteredProducts.length === 1 ? "item" : "items"}
+            </span>
+          </div>
 
-          {/* If no products match the search/category */}
+          {/* If no products match */}
           {filteredProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <h2 className="text-2xl font-semibold text-gray-600">
-                No products found
-              </h2>
+            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-200/50 px-6 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 mb-5 shadow-sm">
+                <Search size={28} />
+              </div>
+              
+              <h3 className="text-lg font-bold text-slate-800">
+                No listings found
+              </h3>
 
-              <p className="text-gray-500 mt-2">
-                Try searching with different keywords or change the selected
-                category.
+              <p className="text-slate-500 text-sm max-w-sm mt-2">
+                We couldn't find any products matching your search criteria. Try using different keywords or resetting the category.
               </p>
+              
+              <button 
+                onClick={() => setselectedcategory("All")}
+                className="mt-6 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-all duration-200 shadow-md active:scale-95 cursor-pointer"
+              >
+                Reset Filter
+              </button>
             </div>
           ) : (
-            // Otherwise show the products
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredProducts.map((Product) => (
+            /* Products Grid */
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              {filteredProducts.map((product) => (
                 <Productcard
-                  // Always provide a unique key while mapping
-                  key={Product.id}
-                  id={Product.id}
-                  title={Product.title}
-                  price={Product.price}
-                  image={Product.image}
-                  location={Product.location}
-                  listed={Product.listed}
-                  isWishlisted={wishlist.includes(Product.id)}
-                  toggleWishlist={toggleWishlist}
+                  key={product.id}
+                  {...product}
                 />
               ))}
             </div>
           )}
-        </div>
+        </main>
       </div>
     </div>
   );

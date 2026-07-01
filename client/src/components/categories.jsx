@@ -9,11 +9,10 @@ import {
   Menu,
   Ellipsis,
 } from "lucide-react";
-import { useState } from "react";
+import { motion } from "framer-motion";
 
 function Categories(props) {
   const { setselectedcategory, selectedcategory } = props;
-  const [showcategoriess, setshowcategories] = useState(false);
 
   const categories = [
     { name: "All", icon: Menu },
@@ -28,39 +27,45 @@ function Categories(props) {
   ];
 
   return (
-    <>
-      <h1 className="text-3xl font-bold mb-4">Categories</h1>
+    <div className="bg-white rounded-2xl border border-slate-200/50 p-5 shadow-sm lg:sticky lg:top-24">
+      <h2 className="text-lg font-bold text-slate-800 tracking-tight mb-4">
+        Categories
+      </h2>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-row lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 scrollbar-none">
         {categories.map((category) => {
           const Icon = category.icon;
+          const isActive = selectedcategory === category.name;
 
           return (
-            <div
+            <button
               key={category.name}
               onClick={() => setselectedcategory(category.name)}
-              className={`flex items-center gap-4 p-3 rounded-lg cursor-pointer transition
- 
-        ${
-          selectedcategory === category.name
-            ? "bg-blue-500 text-white shadow-md"
-            : "hover:bg-blue-100"
-        }`}
+              className={`relative flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer text-left font-medium text-sm transition-all duration-200 shrink-0 outline-none ${
+                isActive
+                  ? "text-white font-semibold"
+                  : "text-slate-600 hover:text-indigo-600 hover:bg-slate-50"
+              }`}
             >
+              {isActive && (
+                <motion.div
+                  layoutId="activeCategoryIndicator"
+                  className="absolute inset-0 bg-indigo-600 rounded-xl shadow-md shadow-indigo-600/10"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
               <Icon
-                size={20}
-                className={
-                  selectedcategory === category.name
-                    ? "text-white"
-                    : "text-blue-400"
-                }
+                size={18}
+                className={`relative z-10 transition-colors duration-200 ${
+                  isActive ? "text-white" : "text-slate-400"
+                }`}
               />
-              <span>{category.name}</span>
-            </div>
+              <span className="relative z-10">{category.name}</span>
+            </button>
           );
         })}
       </div>
-    </>
+    </div>
   );
 }
 

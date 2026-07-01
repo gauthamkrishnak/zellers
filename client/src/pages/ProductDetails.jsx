@@ -1,122 +1,182 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import { useState } from "react";
-import Navbar from "../components/navbar";
-import Footer from "../components/footer";
-import { useSelector } from "react-redux";
+import { ArrowLeft, MapPin, Calendar, ShieldCheck, Heart, MessageSquare, Phone, UserCheck } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import { toggleWishlistAction } from "../features/wishlist/wishlistSlice";
 
 function ProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
+  const dispatch = useDispatch();
 
   const products = useSelector((state) => state.products.products);
-
+  const wishlist = useSelector((state) => state.wishlist.items);
+  
   const product = products.find((product) => product.id === Number(id));
+  const isWishlisted = product ? wishlist.includes(product.id) : false;
 
   if (!product) {
-    return <h1 className="text-center text-2xl mt-10">Product Not Found</h1>;
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-20 text-center">
+        <h1 className="text-2xl font-bold text-slate-800">Product Not Found</h1>
+        <button 
+          onClick={() => navigate("/")}
+          className="mt-4 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold transition"
+        >
+          Return Home
+        </button>
+      </div>
+    );
   }
 
   return (
-    <>
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6">
-        {/* Back Button */}
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-blue-600 hover:underline mb-6"
-        >
-          <ArrowLeft size={18} />
-          Back
-        </button>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fadeIn">
+      {/* Back Button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="group flex items-center gap-2 text-slate-600 hover:text-indigo-600 font-semibold mb-6 transition-colors duration-200 cursor-pointer border-none bg-transparent"
+      >
+        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-200" />
+        <span>Back to listings</span>
+      </button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* LEFT SECTION */}
-          <div className="lg:col-span-2">
-            {/* Product Image */}
-            <div className="bg-white rounded-xl shadow-md p-4 md:p-6">
-              <img
-                src={product.image}
-                alt={product.title}
-                className="w-full h-64 md:h-96 lg:h-[500px] object-contain"
-              />
-            </div>
-
-            {/* Description */}
-            <div className="bg-white rounded-xl shadow-md p-4 md:p-6 mt-6">
-              <h2 className="text-xl md:text-2xl font-bold mb-4">
-                Description
-              </h2>
-
-              <p className="text-sm md:text-base text-gray-700 leading-relaxed">
-                {product.desc}
-              </p>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* LEFT COLUMN (Image & Description) */}
+        <div className="lg:col-span-7 flex flex-col gap-6">
+          {/* Product Image Card */}
+          <div className="bg-white rounded-3xl border border-slate-200/50 p-6 md:p-10 shadow-sm flex items-center justify-center min-h-[350px] md:min-h-[480px]">
+            <img
+              src={product.image}
+              alt={product.title}
+              className="max-h-[320px] md:max-h-[440px] w-auto object-contain hover:scale-[1.02] transition-transform duration-300"
+            />
           </div>
 
-          {/* RIGHT SECTION */}
-          <div>
-            {/* Product Info Card */}
-            <div className="bg-white rounded-xl shadow-md p-4 md:p-6">
-              <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold">
-                {product.title}
-              </h1>
-
-              <p className="text-2xl md:text-3xl font-bold text-blue-600 mt-3">
-                ₹{product.price}
-              </p>
-
-              <p className="text-gray-600 mt-3">📍 {product.location}</p>
-
-              <p className="text-gray-500 text-sm mt-2">
-                Listed {product.listed}
-              </p>
-
-              <button className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
-                Buy Now
-              </button>
-
-              <div className="flex flex-col sm:flex-row gap-3 mt-3">
-                <button className="flex-1 border rounded-lg py-2 hover:bg-gray-100 transition">
-                  Chat
-                </button>
-
-                <button className="flex-1 border rounded-lg py-2 hover:bg-gray-100 transition">
-                  Contact
-                </button>
-              </div>
-            </div>
-
-            {/* Seller Card */}
-            <div className="bg-white rounded-xl shadow-md p-4 md:p-6 mt-6">
-              <h3 className="text-xl font-semibold mb-3">Seller Information</h3>
-
-              <div className="space-y-2">
-                <p className="text-gray-700">✓ Verified Seller</p>
-
-                <p className="text-gray-500">Member since 2023</p>
-              </div>
-
-              <button className="w-full mt-4 border rounded-lg py-2 hover:bg-gray-100 transition">
-                View Profile
-              </button>
-            </div>
-
-            {/* Safety Tips */}
-            <div className="bg-blue-50 rounded-xl p-5 mt-6">
-              <h3 className="font-semibold text-blue-800 mb-2">Safety Tips</h3>
-
-              <ul className="text-sm text-blue-700 space-y-2">
-                <li>• Meet in public places.</li>
-                <li>• Verify the item before payment.</li>
-                <li>• Avoid advance payments.</li>
-                <li>• Do not share sensitive information.</li>
-              </ul>
-            </div>
+          {/* Description Card */}
+          <div className="bg-white rounded-3xl border border-slate-200/50 p-6 md:p-8 shadow-sm">
+            <h2 className="text-lg font-bold text-slate-800 mb-4">
+              Description
+            </h2>
+            <p className="text-slate-600 leading-relaxed text-sm md:text-base whitespace-pre-line">
+              {product.desc}
+            </p>
           </div>
         </div>
+
+        {/* RIGHT COLUMN (Info, Action, Seller, Safety) */}
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          
+          {/* Main Product Info */}
+          <div className="bg-white rounded-3xl border border-slate-200/50 p-6 md:p-8 shadow-sm flex flex-col gap-4">
+            <div>
+              <span className="text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full uppercase tracking-wider">
+                {product.type}
+              </span>
+              <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 tracking-tight mt-4">
+                {product.title}
+              </h1>
+            </div>
+
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-black text-indigo-600">
+                ₹{product.price.toLocaleString("en-IN")}
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-2 border-t border-b border-slate-100 py-4 text-sm text-slate-500 font-medium">
+              <div className="flex items-center gap-2">
+                <MapPin size={16} className="text-slate-400" />
+                <span>{product.location}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar size={16} className="text-slate-400" />
+                <span>Listed {product.listed}</span>
+              </div>
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="flex items-center gap-3 mt-2">
+              <button className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer">
+                Buy Now
+              </button>
+              
+              <button 
+                onClick={() => dispatch(toggleWishlistAction(product.id))}
+                className="bg-slate-50 hover:bg-slate-100 border border-slate-200/80 p-3.5 rounded-2xl transition-all duration-200 active:scale-90 cursor-pointer"
+              >
+                <Heart 
+                  size={20} 
+                  fill={isWishlisted ? "currentColor" : "none"} 
+                  className={isWishlisted ? "text-rose-500" : "text-slate-600"} 
+                />
+              </button>
+            </div>
+
+            <div className="flex gap-3 text-sm font-semibold">
+              <button className="flex-1 border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 py-3 rounded-xl flex items-center justify-center gap-2 transition cursor-pointer bg-white">
+                <MessageSquare size={16} />
+                <span>Chat</span>
+              </button>
+
+              <button className="flex-1 border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 py-3 rounded-xl flex items-center justify-center gap-2 transition cursor-pointer bg-white">
+                <Phone size={16} />
+                <span>Contact</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Seller Information */}
+          <div className="bg-white rounded-3xl border border-slate-200/50 p-6 shadow-sm flex flex-col gap-4">
+            <h3 className="font-bold text-slate-800 text-base">Seller Information</h3>
+            
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                {product.title.charAt(0)}
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <p className="font-bold text-slate-800 text-sm">Verified Seller</p>
+                  <UserCheck size={14} className="text-emerald-500" />
+                </div>
+                <p className="text-slate-400 text-xs font-medium">Member since Oct 2023</p>
+              </div>
+            </div>
+
+            <button className="w-full border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-2.5 rounded-xl text-xs transition cursor-pointer bg-white">
+              View Profile
+            </button>
+          </div>
+
+          {/* Safety Tips Card */}
+          <div className="bg-indigo-50/50 border border-indigo-100 rounded-3xl p-6 flex flex-col gap-3">
+            <h3 className="font-bold text-indigo-900 text-sm flex items-center gap-2">
+              <ShieldCheck size={18} className="text-indigo-600" />
+              <span>Safety Tips</span>
+            </h3>
+
+            <ul className="text-xs text-indigo-950/80 space-y-2.5 font-medium">
+              <li className="flex items-start gap-2">
+                <span className="text-indigo-500 mt-0.5">•</span>
+                <span>Always meet the seller in public, well-lit places.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-indigo-500 mt-0.5">•</span>
+                <span>Thoroughly inspect the item before finalizing payment.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-indigo-500 mt-0.5">•</span>
+                <span>Avoid making advance deposits or wiring money online.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-indigo-500 mt-0.5">•</span>
+                <span>Do not share credit card details or OTP with anyone.</span>
+              </li>
+            </ul>
+          </div>
+          
+        </div>
       </div>
-    </>
+    </div>
   );
 }
 
