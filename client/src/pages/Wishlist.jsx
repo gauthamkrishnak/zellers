@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Products from "../data/products";
 import ProductCard from "../components/productcard";
+import { motion, AnimatePresence } from "framer-motion";
 
 function Wishlist() {
   const [wishlist, setWishlist] = useState(() => {
@@ -38,14 +39,29 @@ function Wishlist() {
       <h1 className="text-3xl font-bold mb-6">My Wishlist</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {wishlistProducts.map((product) => (
-          <ProductCard
-            key={product.id}
-            {...product}
-            isWishlisted={true}
-            toggleWishlist={toggleWishlist}
-          />
-        ))}
+        <AnimatePresence mode="popLayout">
+          {wishlistProducts.map((product) => (
+            <motion.div
+              key={product.id}
+              layout
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{
+                type: "spring",
+                stiffness: 500,
+                damping: 35,
+                mass: 1,
+              }}
+            >
+              <ProductCard
+                {...product}
+                isWishlisted={true}
+                toggleWishlist={toggleWishlist}
+              />
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </div>
   );
