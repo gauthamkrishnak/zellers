@@ -12,7 +12,7 @@ Base.metadata.create_all(bind=engine)
 @app.get("/")
 def home():
     return {"message": "Hello World"}
-@app.get("/products")
+@app.get("/products/")
 def get_products():
 
     db = SessionLocal()

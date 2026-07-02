@@ -1,5 +1,14 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Calendar, ShieldCheck, Heart, MessageSquare, Phone, UserCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  MapPin,
+  Calendar,
+  ShieldCheck,
+  Heart,
+  MessageSquare,
+  Phone,
+  UserCheck,
+} from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { toggleWishlistAction } from "../features/wishlist/wishlistSlice";
 
@@ -10,7 +19,7 @@ function ProductDetails() {
 
   const products = useSelector((state) => state.products.products);
   const wishlist = useSelector((state) => state.wishlist.items);
-  
+
   const product = products.find((product) => product.id === Number(id));
   const isWishlisted = product ? wishlist.includes(product.id) : false;
 
@@ -18,7 +27,7 @@ function ProductDetails() {
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 text-center">
         <h1 className="text-2xl font-bold text-slate-800">Product Not Found</h1>
-        <button 
+        <button
           onClick={() => navigate("/")}
           className="mt-4 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold transition"
         >
@@ -35,12 +44,14 @@ function ProductDetails() {
         onClick={() => navigate(-1)}
         className="group flex items-center gap-2 text-slate-600 hover:text-indigo-600 font-semibold mb-6 transition-colors duration-200 cursor-pointer border-none bg-transparent"
       >
-        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-200" />
+        <ArrowLeft
+          size={18}
+          className="group-hover:-translate-x-1 transition-transform duration-200"
+        />
         <span>Back to listings</span>
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
         {/* LEFT COLUMN (Image & Description) */}
         <div className="lg:col-span-7 flex flex-col gap-6">
           {/* Product Image Card */}
@@ -65,7 +76,6 @@ function ProductDetails() {
 
         {/* RIGHT COLUMN (Info, Action, Seller, Safety) */}
         <div className="lg:col-span-5 flex flex-col gap-6">
-          
           {/* Main Product Info */}
           <div className="bg-white rounded-3xl border border-slate-200/50 p-6 md:p-8 shadow-sm flex flex-col gap-4">
             <div>
@@ -99,25 +109,20 @@ function ProductDetails() {
               <button className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer">
                 Buy Now
               </button>
-              
-              <button 
+
+              <button
                 onClick={() => dispatch(toggleWishlistAction(product.id))}
                 className="bg-slate-50 hover:bg-slate-100 border border-slate-200/80 p-3.5 rounded-2xl transition-all duration-200 active:scale-90 cursor-pointer"
               >
-                <Heart 
-                  size={20} 
-                  fill={isWishlisted ? "currentColor" : "none"} 
-                  className={isWishlisted ? "text-rose-500" : "text-slate-600"} 
+                <Heart
+                  size={20}
+                  fill={isWishlisted ? "currentColor" : "none"}
+                  className={isWishlisted ? "text-rose-500" : "text-slate-600"}
                 />
               </button>
             </div>
 
             <div className="flex gap-3 text-sm font-semibold">
-              <button className="flex-1 border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 py-3 rounded-xl flex items-center justify-center gap-2 transition cursor-pointer bg-white">
-                <MessageSquare size={16} />
-                <span>Chat</span>
-              </button>
-
               <button className="flex-1 border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 py-3 rounded-xl flex items-center justify-center gap-2 transition cursor-pointer bg-white">
                 <Phone size={16} />
                 <span>Contact</span>
@@ -127,18 +132,24 @@ function ProductDetails() {
 
           {/* Seller Information */}
           <div className="bg-white rounded-3xl border border-slate-200/50 p-6 shadow-sm flex flex-col gap-4">
-            <h3 className="font-bold text-slate-800 text-base">Seller Information</h3>
-            
+            <h3 className="font-bold text-slate-800 text-base">
+              Seller Information
+            </h3>
+
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-lg shadow-sm">
                 {product.title.charAt(0)}
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <p className="font-bold text-slate-800 text-sm">Verified Seller</p>
+                  <p className="font-bold text-slate-800 text-sm">
+                    Verified Seller
+                  </p>
                   <UserCheck size={14} className="text-emerald-500" />
                 </div>
-                <p className="text-slate-400 text-xs font-medium">Member since Oct 2023</p>
+                <p className="text-slate-400 text-xs font-medium">
+                  Member since Oct 2023
+                </p>
               </div>
             </div>
 
@@ -161,19 +172,24 @@ function ProductDetails() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-indigo-500 mt-0.5">•</span>
-                <span>Thoroughly inspect the item before finalizing payment.</span>
+                <span>
+                  Thoroughly inspect the item before finalizing payment.
+                </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-indigo-500 mt-0.5">•</span>
-                <span>Avoid making advance deposits or wiring money online.</span>
+                <span>
+                  Avoid making advance deposits or wiring money online.
+                </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-indigo-500 mt-0.5">•</span>
-                <span>Do not share credit card details or OTP with anyone.</span>
+                <span>
+                  Do not share credit card details or OTP with anyone.
+                </span>
               </li>
             </ul>
           </div>
-          
         </div>
       </div>
     </div>

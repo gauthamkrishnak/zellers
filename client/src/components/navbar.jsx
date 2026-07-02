@@ -10,34 +10,38 @@ function Navbar({ searchTerm, setSearchTerm }) {
     <nav className="fixed top-0 left-0 w-full bg-white/85 backdrop-blur-md border-b border-slate-200/60 z-50 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row items-center justify-between py-4 gap-4 md:h-20 md:py-0">
-          
           {/* Logo */}
           <div className="flex items-center justify-between w-full md:w-auto">
-            <h1 
+            <h1
               onClick={() => navigate("/")}
               className="font-extrabold text-3xl tracking-tight bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent cursor-pointer select-none hover:opacity-90 active:scale-95 transition-all duration-150"
             >
               Zellers
             </h1>
-            
+
             {/* Mobile Actions (Icons + Sell Button) */}
             <div className="flex items-center gap-3 md:hidden">
               <button
                 onClick={() => navigate("/wishlist")}
                 className="relative p-2 text-slate-600 hover:text-rose-500 hover:bg-slate-100 rounded-full transition-all duration-200"
               >
-                <Heart size={20} className={wishlist.length > 0 ? "fill-rose-500 text-rose-500" : ""} />
+                <Heart
+                  size={20}
+                  className={
+                    wishlist.length > 0 ? "fill-rose-500 text-rose-500" : ""
+                  }
+                />
                 {wishlist.length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-md">
                     {wishlist.length}
                   </span>
                 )}
               </button>
-              
+
               <button className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-all duration-200">
                 <Bell size={20} />
               </button>
-              
+
               <button className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-full shadow-md flex items-center justify-center transition-all duration-200 active:scale-95">
                 <Plus size={18} />
               </button>
@@ -46,7 +50,10 @@ function Navbar({ searchTerm, setSearchTerm }) {
 
           {/* Search Bar Container */}
           <div className="relative w-full md:max-w-md lg:max-w-lg flex items-center group">
-            <Search className="absolute left-3.5 text-slate-400 group-focus-within:text-indigo-600 transition-colors duration-200" size={18} />
+            <Search
+              className="absolute left-3.5 text-slate-400 group-focus-within:text-indigo-600 transition-colors duration-200"
+              size={18}
+            />
             <input
               type="text"
               placeholder="Search local listings, electronics, furniture..."
@@ -62,7 +69,12 @@ function Navbar({ searchTerm, setSearchTerm }) {
               onClick={() => navigate("/wishlist")}
               className="relative p-2.5 text-slate-600 hover:text-rose-500 hover:bg-slate-50 rounded-xl transition-all duration-200 cursor-pointer group"
             >
-              <Heart size={22} className={wishlist.length > 0 ? "fill-rose-500 text-rose-500" : ""} />
+              <Heart
+                size={22}
+                className={
+                  wishlist.length > 0 ? "fill-rose-500 text-rose-500" : ""
+                }
+              />
               {wishlist.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-md">
                   {wishlist.length}
@@ -87,7 +99,6 @@ function Navbar({ searchTerm, setSearchTerm }) {
               <span>SELL ITEM</span>
             </button>
           </div>
-
         </div>
       </div>
     </nav>
