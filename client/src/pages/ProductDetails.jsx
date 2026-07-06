@@ -11,6 +11,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { useWishlist } from "../context/WishlistContext";
+import Loader from "../components/Loader";
 
 function ProductDetails() {
   const { id } = useParams();
@@ -53,8 +54,9 @@ function ProductDetails() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-20 text-center text-slate-500">
-        Loading product...
+      <div className="flex flex-col items-center justify-center py-32">
+        <Loader size={90} />
+        <p className="text-slate-400 text-sm mt-3 font-medium">Loading product...</p>
       </div>
     );
   }

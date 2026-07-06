@@ -6,6 +6,8 @@ import { Heart, ArrowLeft } from "lucide-react";
 import axios from "axios";
 
 function Wishlist() {
+  const [loading, setLoading] = useState(true);
+
   const navigate = useNavigate();
   const [wishlistProducts, setWishlistProducts] = useState([]);
 

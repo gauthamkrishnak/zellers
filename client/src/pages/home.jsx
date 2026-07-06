@@ -118,10 +118,11 @@
 
 // export default Home;
 // ---------------------------------NEW VERSION---------------------------------
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Hero from "../components/hero";
 import Categories from "../components/categories";
 import Productcard from "../components/productcard";
+import Loader from "../components/Loader";
 import { useOutletContext } from "react-router-dom";
 import { Search } from "lucide-react";
 import axios from "axios";
@@ -131,8 +132,13 @@ function Home() {
   const { searchTerm } = useOutletContext();
   const [products, setProducts] = useState([]);
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  // true while user is still typing (debounce window)
+  const [isSearching, setIsSearching] = useState(false);
+  const isFirstRender = useRef(true);
 
   const fetchProducts = async () => {
+    setIsLoading(true);
     try {
       const response = await axios.get("http://127.0.0.1:8000/products/", {
         params: {
@@ -144,22 +150,31 @@ function Home() {
       setProducts(response.data);
     } catch (error) {
       console.error("Error fetching products:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
-  function debounce() {
+
+  // Debounce: mark as "searching" immediately on type, commit after 500ms
+  useEffect(() => {
+    if (isFirstRender.current) return; // don't treat mount as a search
+    setIsSearching(true);
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
+      setIsSearching(false);
     }, 500);
 
     return () => clearTimeout(timer);
-  }
-  useEffect(() => {
-    debounce();
   }, [searchTerm]);
 
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+    }
     fetchProducts();
   }, [selectedcategory, debouncedSearch]);
+
+  const showLoader = isLoading || isSearching;
 
   return (
     <div className="flex flex-col gap-8 pb-16">
@@ -184,12 +199,24 @@ function Home() {
                 : `${selectedcategory} Listings`}
             </h2>
 
-            <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
-              {products.length} {products.length === 1 ? "item" : "items"}
-            </span>
+            <div className="flex items-center gap-2">
+              {showLoader && <Loader size={32} />}
+              {!showLoader && (
+                <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
+                  {products.length} {products.length === 1 ? "item" : "items"}
+                </span>
+              )}
+            </div>
           </div>
 
-          {products.length === 0 ? (
+          {showLoader ? (
+            <div className="flex flex-col items-center justify-center py-24">
+              <Loader size={80} />
+              <p className="text-slate-400 text-sm mt-3 font-medium">
+                {isSearching ? "Searching..." : "Loading listings..."}
+              </p>
+            </div>
+          ) : products.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-200/50 px-6 text-center">
               <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 mb-5 shadow-sm">
                 <Search size={28} />
