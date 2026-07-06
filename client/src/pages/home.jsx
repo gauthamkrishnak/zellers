@@ -130,13 +130,14 @@ function Home() {
   const [selectedcategory, setselectedcategory] = useState("All");
   const { searchTerm } = useOutletContext();
   const [products, setProducts] = useState([]);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const fetchProducts = async () => {
     try {
       const response = await axios.get("http://127.0.0.1:8000/products/", {
         params: {
           category: selectedcategory,
-          search: searchTerm,
+          search: debouncedSearch,
         },
       });
 
@@ -145,10 +146,20 @@ function Home() {
       console.error("Error fetching products:", error);
     }
   };
+  function debounce() {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }
+  useEffect(() => {
+    debounce();
+  }, [searchTerm]);
 
   useEffect(() => {
     fetchProducts();
-  }, [selectedcategory, searchTerm]);
+  }, [selectedcategory, debouncedSearch]);
 
   return (
     <div className="flex flex-col gap-8 pb-16">

@@ -78,6 +78,19 @@ def get_wishlist():
     db.close()
 
     return wishlist_products
+@app.get("/products/{product_id}")
+def get_product(product_id: int):
+    db = SessionLocal()
+
+    product = db.query(Product).filter(Product.id == product_id).first()
+
+    if product is None:
+        db.close()
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    db.close()
+
+    return product
 
 
 @app.put("/products/{product_id}/wishlist")

@@ -1,16 +1,15 @@
 import { Heart, Bell, Search, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useWishlist } from "../context/WishlistContext";
 
 function Navbar({ searchTerm, setSearchTerm }) {
   const navigate = useNavigate();
-  const wishlist = useSelector((state) => state.wishlist.items);
+  const { wishlistCount } = useWishlist();
 
   return (
     <nav className="fixed top-0 left-0 w-full bg-white/85 backdrop-blur-md border-b border-slate-200/60 z-50 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row items-center justify-between py-4 gap-4 md:h-20 md:py-0">
-          {/* Logo */}
           <div className="flex items-center justify-between w-full md:w-auto">
             <h1
               onClick={() => navigate("/")}
@@ -19,21 +18,16 @@ function Navbar({ searchTerm, setSearchTerm }) {
               Zellers
             </h1>
 
-            {/* Mobile Actions (Icons + Sell Button) */}
             <div className="flex items-center gap-3 md:hidden">
               <button
                 onClick={() => navigate("/wishlist")}
                 className="relative p-2 text-slate-600 hover:text-rose-500 hover:bg-slate-100 rounded-full transition-all duration-200"
               >
-                <Heart
-                  size={20}
-                  className={
-                    wishlist.length > 0 ? "fill-rose-500 text-rose-500" : ""
-                  }
-                />
-                {wishlist.length > 0 && (
+                <Heart size={20} className={"fill-rose-500 text-rose-500"} />
+
+                {wishlistCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-md">
-                    {wishlist.length}
+                    {wishlistCount}
                   </span>
                 )}
               </button>
@@ -48,12 +42,12 @@ function Navbar({ searchTerm, setSearchTerm }) {
             </div>
           </div>
 
-          {/* Search Bar Container */}
           <div className="relative w-full md:max-w-md lg:max-w-lg flex items-center group">
             <Search
               className="absolute left-3.5 text-slate-400 group-focus-within:text-indigo-600 transition-colors duration-200"
               size={18}
             />
+
             <input
               type="text"
               placeholder="Search local listings, electronics, furniture..."
@@ -63,7 +57,6 @@ function Navbar({ searchTerm, setSearchTerm }) {
             />
           </div>
 
-          {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-6">
             <button
               onClick={() => navigate("/wishlist")}
@@ -72,23 +65,23 @@ function Navbar({ searchTerm, setSearchTerm }) {
               <Heart
                 size={22}
                 className={
-                  wishlist.length > 0 ? "fill-rose-500 text-rose-500" : ""
+                  wishlistCount > 0 ? "fill-rose-500 text-rose-500" : ""
                 }
               />
-              {wishlist.length > 0 && (
+
+              {wishlistCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-md">
-                  {wishlist.length}
+                  {wishlistCount}
                 </span>
               )}
-              {/* Tooltip */}
-              <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition duration-200 whitespace-nowrap shadow-md pointer-events-none">
+
+              <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition duration-200 whitespace-nowrap shadow-md pointer-events-none fill-red-400">
                 Wishlist
               </span>
             </button>
 
             <button className="relative p-2.5 text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition-all duration-200 cursor-pointer group">
               <Bell size={22} />
-              {/* Tooltip */}
               <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition duration-200 whitespace-nowrap shadow-md pointer-events-none">
                 Notifications
               </span>
