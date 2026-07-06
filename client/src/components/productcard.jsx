@@ -2,20 +2,14 @@ import { Heart, MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { toggleWishlistAction } from "../features/wishlist/wishlistSlice";
+import axios from "axios";
 
 function ProductCard(props) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const wishlist = useSelector((state) => state.wishlist.items);
 
-  const {
-    id,
-    title,
-    price,
-    image,
-    location,
-    listed,
-  } = props;
+  const { id, title, price, image, location, listed } = props;
 
   const isWishlisted = wishlist.includes(id);
 
@@ -40,16 +34,27 @@ function ProductCard(props) {
 
         {/* Wishlist Button */}
         <button
-          onClick={(e) => {
+          onClick={async (e) => {
             e.stopPropagation();
-            dispatch(toggleWishlistAction(id));
+
+            try {
+              await axios.put(`http://127.0.0.1:8000/products/${id}/wishlist`);
+
+              dispatch(toggleWishlistAction(id));
+            } catch (error) {
+              console.error("Could not update wishlist:", error);
+            }
           }}
           className="absolute top-4.5 right-4.5 bg-white/90 hover:bg-white p-2.5 rounded-full shadow-md backdrop-blur-xs cursor-pointer active:scale-90 transition-all duration-200"
         >
           <Heart
             size={18}
             fill={isWishlisted ? "currentColor" : "none"}
-            className={isWishlisted ? "text-rose-500" : "text-slate-600 hover:text-rose-500"}
+            className={
+              isWishlisted
+                ? "text-rose-500"
+                : "text-slate-600 hover:text-rose-500"
+            }
           />
         </button>
       </div>
@@ -63,7 +68,9 @@ function ProductCard(props) {
 
           <div className="flex items-center gap-1.5 text-slate-400 mt-2">
             <MapPin size={15} className="text-slate-400 shrink-0" />
-            <p className="text-xs font-medium text-slate-500 truncate">{location}</p>
+            <p className="text-xs font-medium text-slate-500 truncate">
+              {location}
+            </p>
           </div>
         </div>
 
