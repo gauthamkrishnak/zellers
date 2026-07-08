@@ -2,20 +2,50 @@ import { useState } from "react";
 import { Eye, EyeOff, Sparkles, ArrowRight, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import axios from "axios";
+import { useAuth } from "../context/AuthContext";
 
 function Login() {
   const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({ username: "", password: "" });
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: wire up real auth here
-    navigate("/");
+
+    setError("");
+    setLoading(true);
+
+    try {
+      if (isRegistering) {
+        await axios.post("http://127.0.0.1:8000/register", {
+          email: form.email,
+          password: form.password,
+        });
+      }
+
+      const response = await axios.post("http://127.0.0.1:8000/login", {
+        email: form.email,
+        password: form.password,
+      });
+
+      login(response.data.access_token);
+      navigate("/");
+    } catch (error) {
+      setError(
+        error.response?.data?.detail || "Authentication failed. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleLogin = () => {
@@ -62,7 +92,8 @@ function Login() {
               with ease.
             </h2>
             <p className="text-indigo-200/70 mt-5 text-base leading-relaxed">
-              Join thousands of trusted sellers and buyers in your community. Your next great deal is just a sign-in away.
+              Join thousands of trusted sellers and buyers in your community.
+              Your next great deal is just a sign-in away.
             </p>
           </motion.div>
 
@@ -82,7 +113,9 @@ function Login() {
                 key={stat.label}
                 className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm"
               >
-                <p className="text-white font-extrabold text-2xl">{stat.value}</p>
+                <p className="text-white font-extrabold text-2xl">
+                  {stat.value}
+                </p>
                 <p className="text-slate-400 text-xs uppercase tracking-wider mt-1">
                   {stat.label}
                 </p>
@@ -105,16 +138,18 @@ function Login() {
             <h1 className="font-extrabold text-4xl tracking-tight bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
               Zellers
             </h1>
-            <p className="text-slate-500 text-sm mt-1">Kochi's Premier Marketplace</p>
+            <p className="text-slate-500 text-sm mt-1">
+              Kochi's Premier Marketplace
+            </p>
           </div>
 
           {/* Heading */}
           <div className="mb-8">
             <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              Welcome back
+              {isRegistering ? "Create an account" : "Welcome back"}
             </h2>
             <p className="text-slate-500 mt-2 text-sm">
-              Sign in to your account to continue
+              {isRegistering ? "Sign up to get started" : "Sign in to your account to continue"}
             </p>
           </div>
 
@@ -161,22 +196,29 @@ function Login() {
 
           {/* Username / Password Form */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {error && (
+              <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100">
+                {error}
+              </div>
+            )}
             {/* Username */}
             <div className="flex flex-col gap-1.5">
               <label
-                htmlFor="username"
+                htmlFor="email"
                 className="text-sm font-semibold text-slate-700"
               >
-                Username
+                Email
               </label>
+
               <input
-                id="username"
-                name="username"
-                type="text"
-                autoComplete="username"
-                value={form.username}
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                value={form.email}
                 onChange={handleChange}
-                placeholder="Enter your username"
+                placeholder="Enter your email"
+                required
                 className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 transition-all duration-200 text-sm shadow-sm"
               />
             </div>
@@ -190,17 +232,20 @@ function Login() {
                 >
                   Password
                 </label>
-                <button
-                  type="button"
-                  className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold transition-colors cursor-pointer"
-                >
-                  Forgot password?
-                </button>
+                {!isRegistering && (
+                  <button
+                    type="button"
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold transition-colors cursor-pointer required"
+                  >
+                    Forgot password?
+                  </button>
+                )}
               </div>
               <div className="relative">
                 <input
                   id="password"
                   name="password"
+                  required
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   value={form.password}
@@ -222,20 +267,31 @@ function Login() {
             <button
               id="login-submit"
               type="submit"
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/30 hover:scale-[1.01] active:scale-95 transition-all duration-200 mt-2 cursor-pointer"
+              disabled={loading}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/30 hover:scale-[1.01] active:scale-95 transition-all duration-200 mt-2 cursor-pointer"
             >
-              Sign In
+              {loading
+                ? isRegistering
+                  ? "Creating account..."
+                  : "Signing in..."
+                : isRegistering
+                ? "Sign Up"
+                : "Sign In"}
             </button>
           </form>
 
           {/* Sign up prompt */}
           <p className="text-center text-sm text-slate-500 mt-6">
-            Don't have an account?{" "}
+            {isRegistering ? "Already have an account?" : "Don't have an account?"}{" "}
             <button
               type="button"
+              onClick={() => {
+                setIsRegistering(!isRegistering);
+                setError("");
+              }}
               className="text-indigo-600 hover:text-indigo-800 font-semibold transition-colors cursor-pointer"
             >
-              Create one for free
+              {isRegistering ? "Sign in instead" : "Create one for free"}
             </button>
           </p>
 

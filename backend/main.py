@@ -1,10 +1,15 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, SessionLocal
-from models import Base, Product
+from models import Base, Product,User
+from schemas import UserRegister, UserLogin
+from auth import hash_password, verify_password, create_access_token
+from jose import jwt, JWTError
+from auth import SECRET_KEY, ALGORITHM
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
-
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # Allow React frontend to call this backend
 app.add_middleware(
     CORSMiddleware,
@@ -110,4 +115,77 @@ def update_wishlist(product_id: int):
     db.close()
 
     return product
+@app.post("/register")
+def register_user(user: UserRegister):
+    db = SessionLocal()
 
+    existing_user = db.query(User).filter(User.email == user.email).first()
+
+    if existing_user:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Email is already registered",
+        )
+
+    new_user = User(
+        email=user.email,
+        hashed_password=hash_password(user.password),
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.close()
+
+    return {"message": "User registered successfully"}
+
+
+@app.post("/login")
+def login_user(user: UserLogin):
+    db = SessionLocal()
+
+    existing_user = db.query(User).filter(User.email == user.email).first()
+
+    if not existing_user:
+        db.close()
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password",
+        )
+
+    password_is_correct = verify_password(
+        user.password,
+        existing_user.hashed_password,
+    )
+
+    if not password_is_correct:
+        db.close()
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password",
+        )
+
+    access_token = create_access_token(
+        data={"sub": str(existing_user.id)}
+    )
+
+    db.close()
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
+
+@app.get("/test-token")
+def test_token(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return {
+            "message": "Token is valid",
+            "payload": payload,
+        }
+    except JWTError as error:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Invalid token: {str(error)}",
+        )

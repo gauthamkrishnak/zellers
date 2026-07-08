@@ -10,19 +10,27 @@ function Wishlist() {
 
   const navigate = useNavigate();
   const [wishlistProducts, setWishlistProducts] = useState([]);
+  const fetchWishlist = async () => {
+    console.log("fn call");
+
+    try {
+      const response = await axios.get("http://127.0.0.1:8000/wishlist/");
+      setWishlistProducts(response.data);
+    } catch (error) {
+      console.error("Error fetching wishlist:", error);
+    }
+  };
+
+  const handleWishlistToggle = (productId, isWishlisted) => {
+    if (!isWishlisted) {
+      setWishlistProducts(prev => prev.filter(p => p.id !== productId));
+    }
+  };
 
   useEffect(() => {
-    const fetchWishlist = async () => {
-      try {
-        const response = await axios.get("http://127.0.0.1:8000/wishlist/");
-        setWishlistProducts(response.data);
-      } catch (error) {
-        console.error("Error fetching wishlist:", error);
-      }
-    };
-
     fetchWishlist();
-  }, [wishlistProducts]);
+    console.log("fn call-2");
+  }, []);
 
   if (wishlistProducts.length === 0) {
     return (
@@ -91,7 +99,7 @@ function Wishlist() {
                 damping: 30,
               }}
             >
-              <ProductCard {...product} />
+              <ProductCard {...product} onWishlistToggle={handleWishlistToggle} />
             </motion.div>
           ))}
         </AnimatePresence>

@@ -13,3 +13,10 @@ class Product(Base):
     image = Column(String)
     desc = Column(String)
     is_wishlisted = Column(Boolean, default=False)
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    

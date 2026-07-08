@@ -6,15 +6,11 @@ import { useWishlist } from "../context/WishlistContext";
 
 function ProductCard(props) {
   const navigate = useNavigate();
-  const { refreshWishlist } = useWishlist();
+  const { refreshWishlist } = useWishlist(props);
 
   const { id, title, price, image, location, listed } = props;
 
   const [isWishlisted, setIsWishlisted] = useState(props.is_wishlisted);
-
-  useEffect(() => {
-    setIsWishlisted(props.is_wishlisted);
-  }, [props.is_wishlisted]);
 
   const handleCardClick = () => {
     const formattedTitle = title.replaceAll(" ", "-").toLowerCase();
@@ -30,11 +26,19 @@ function ProductCard(props) {
       );
 
       setIsWishlisted(response.data.is_wishlisted);
+      console.log("wishlist data", response);
       refreshWishlist();
+      if (props.onWishlistToggle) {
+        props.onWishlistToggle(id, response.data.is_wishlisted);
+      }
     } catch (error) {
       console.error("Could not update wishlist:", error);
     }
   };
+  useEffect(() => {
+    // alert("wishlist updated");
+    // console.log("wishlist updated");
+  }, []);
 
   return (
     <div
