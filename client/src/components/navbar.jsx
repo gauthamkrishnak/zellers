@@ -1,12 +1,14 @@
-import { Heart, Bell, Search, Plus, LogOut, User, X } from "lucide-react";
+import { Heart, Bell, Search, Plus, LogOut, X, ShoppingCart, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useWishlist } from "../context/WishlistContext";
 import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext";
 import { useState, useRef, useEffect } from "react";
 
 function Navbar({ searchTerm, setSearchTerm }) {
   const navigate = useNavigate();
   const { wishlistCount } = useWishlist();
+  const { cartItems, setIsCartOpen } = useCart();
   const { logout } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -54,6 +56,18 @@ function Navbar({ searchTerm, setSearchTerm }) {
                 )}
               </button>
 
+              <button
+                onClick={() => setIsCartOpen(true)}
+                className="relative p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-all duration-200"
+              >
+                <ShoppingCart size={20} />
+                {cartItems.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-indigo-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-md">
+                    {cartItems.length}
+                  </span>
+                )}
+              </button>
+
               <button 
                 onClick={() => setIsNotificationsOpen(true)}
                 className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-all duration-200"
@@ -62,21 +76,28 @@ function Navbar({ searchTerm, setSearchTerm }) {
               </button>
 
               <div className="relative" ref={profileRefMobile}>
-                <button 
+                <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-all duration-200 cursor-pointer"
+                  className="w-8 h-8 rounded-full overflow-hidden border-2 border-slate-200 hover:border-indigo-500 transition-colors duration-200 cursor-pointer focus:outline-none"
                 >
-                  <User size={20} />
+                  <img src="https://ui-avatars.com/api/?name=Alex+Doe&background=random&color=fff" alt="User Profile" className="w-full h-full object-cover" />
                 </button>
 
                 {isProfileOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-2 z-50">
-                    <div className="px-4 py-2 border-b border-slate-100 mb-1">
-                      <p className="text-sm font-semibold text-slate-800">My Account</p>
+                  <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-2 z-50">
+                    <div className="px-4 py-3 border-b border-slate-100 mb-1">
+                      <p className="text-sm font-bold text-slate-800">Alex Doe</p>
+                      <p className="text-xs text-slate-500 truncate">alex@example.com</p>
                     </div>
-                    <button 
+                    <button
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                    >
+                      <Settings size={16} />
+                      <span>Account Details</span>
+                    </button>
+                    <button
                       onClick={logout}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer border-t border-slate-50 mt-1"
                     >
                       <LogOut size={16} />
                       <span>Log Out</span>
@@ -125,6 +146,21 @@ function Navbar({ searchTerm, setSearchTerm }) {
               </span>
             </button>
 
+            <button
+              onClick={() => setIsCartOpen(true)}
+              className="relative p-2.5 text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition-all duration-200 cursor-pointer group"
+            >
+              <ShoppingCart size={22} />
+              {cartItems.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-indigo-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-md">
+                  {cartItems.length}
+                </span>
+              )}
+              <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition duration-200 whitespace-nowrap shadow-md pointer-events-none">
+                Cart
+              </span>
+            </button>
+
             <button 
               onClick={() => setIsNotificationsOpen(true)}
               className="relative p-2.5 text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition-all duration-200 cursor-pointer group"
@@ -136,26 +172,38 @@ function Navbar({ searchTerm, setSearchTerm }) {
             </button>
 
             <div className="relative" ref={profileRefDesktop}>
-              <button 
+              <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="relative p-2.5 text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition-all duration-200 cursor-pointer group"
+                className="w-9 h-9 rounded-full overflow-hidden border-2 border-slate-200 hover:border-indigo-500 transition-colors duration-200 cursor-pointer focus:outline-none ml-2 group"
               >
-                <User size={22} />
+                <img src="https://ui-avatars.com/api/?name=Alex+Doe&background=random&color=fff" alt="User Profile" className="w-full h-full object-cover" />
               </button>
 
               {isProfileOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-2 z-50">
-                  <div className="px-4 py-2 border-b border-slate-100 mb-1">
-                    <p className="text-sm font-semibold text-slate-800">My Account</p>
-                    <p className="text-xs text-slate-500">View your listings & activity</p>
+                <div className="absolute right-0 mt-3 w-64 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 transform origin-top-right transition-all">
+                  <div className="px-5 py-4 border-b border-slate-100 mb-1 bg-slate-50/50 rounded-t-xl -mt-2">
+                    <p className="text-base font-bold text-slate-800">Alex Doe</p>
+                    <p className="text-xs text-slate-500 truncate mt-0.5">alex@example.com</p>
                   </div>
-                  <button 
-                    onClick={logout}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                  >
-                    <LogOut size={16} />
-                    <span>Log Out</span>
-                  </button>
+                  
+                  <div className="py-1">
+                    <button
+                      className="w-full flex items-center gap-3 px-5 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors cursor-pointer"
+                    >
+                      <Settings size={18} />
+                      <span>Account Details</span>
+                    </button>
+                  </div>
+
+                  <div className="border-t border-slate-100 mt-1 pt-1">
+                    <button
+                      onClick={logout}
+                      className="w-full flex items-center gap-3 px-5 py-2.5 text-left text-sm font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                    >
+                      <LogOut size={18} />
+                      <span>Log Out</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

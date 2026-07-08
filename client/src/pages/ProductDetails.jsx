@@ -11,12 +11,14 @@ import {
   UserCheck,
 } from "lucide-react";
 import { useWishlist } from "../context/WishlistContext";
+import { useCart } from "../context/CartContext";
 import Loader from "../components/Loader";
 
 function ProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { refreshWishlist } = useWishlist();
+  const { cartItems, addToCart, setIsCartOpen } = useCart();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -56,7 +58,9 @@ function ProductDetails() {
     return (
       <div className="flex flex-col items-center justify-center py-32">
         <Loader size={90} />
-        <p className="text-slate-400 text-sm mt-3 font-medium">Loading product...</p>
+        <p className="text-slate-400 text-sm mt-3 font-medium">
+          Loading product...
+        </p>
       </div>
     );
   }
@@ -95,7 +99,7 @@ function ProductDetails() {
         <div className="lg:col-span-7 flex flex-col gap-6">
           <div className="bg-white rounded-3xl border border-slate-200/50 p-6 md:p-10 shadow-sm flex items-center justify-center min-h-[350px] md:min-h-[480px]">
             <img
-              src={product.image}
+              src={`http://127.0.0.1:8000/uploads/${product.image}`}
               alt={product.title}
               className="max-h-[320px] md:max-h-[440px] w-auto object-contain hover:scale-[1.02] transition-transform duration-300"
             />
@@ -140,9 +144,21 @@ function ProductDetails() {
             </div>
 
             <div className="flex items-center gap-3 mt-2">
-              <button className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer">
-                Buy Now
-              </button>
+              {cartItems.some((item) => item.id === product.id) ? (
+                <button
+                  onClick={() => setIsCartOpen(true)}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-emerald-600/10 hover:shadow-emerald-600/20 active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  Go to Cart
+                </button>
+              ) : (
+                <button
+                  onClick={() => addToCart(product)}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  Add to Cart
+                </button>
+              )}
 
               <button
                 onClick={handleWishlist}

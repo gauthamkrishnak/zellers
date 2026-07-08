@@ -47,7 +47,7 @@ function ProductCard(props) {
     >
       <div className="relative h-60 bg-slate-50 flex items-center justify-center p-6 overflow-hidden">
         <img
-          src={image}
+          src={`http://127.0.0.1:8000/uploads/${image}`}
           alt={title}
           className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500"
         />
