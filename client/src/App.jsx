@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import Home from "./pages/home";
 import ProductDetails from "./pages/ProductDetails";
 import Wishlist from "./pages/Wishlist";
+import Account from "./pages/Account";
 import ScrollToTop from "./components/scrolltotop";
 import Layout from "./pages/Layout";
 import Login from "./pages/Login";
@@ -19,6 +20,7 @@ function App() {
 
         {/* Protected layout routes — redirect to /login if not authenticated */}
         <Route element={<ProtectedRoute />}>
+          <Route path="/account" element={<Account />} />
           <Route element={<Layout />}>
             <Route path="/" element={<Home />} />
             <Route path="/product/:id/:title" element={<ProductDetails />} />

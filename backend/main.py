@@ -10,7 +10,6 @@ from fastapi.staticfiles import StaticFiles
 from typing import Optional
 
 app = FastAPI()
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Allow React frontend to call this backend
 app.add_middleware(
@@ -24,24 +23,62 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 # Create tables if they do not already exist
 Base.metadata.create_all(bind=engine)
 
 
 # ─── Auth dependency ───────────────────────────────────────────────
-def get_current_user_id(authorization: str = Header(...)):
-    """Extract user ID from the Bearer token in the Authorization header."""
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
+def get_current_user(authorization: str = Header(...)) -> User:
+    """Reads Authorization: Bearer <token>, validates & decodes JWT, gets email from sub, finds user in PostgreSQL."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     token = authorization.split(" ", 1)[1]
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = int(payload.get("sub"))
-        return user_id
-    except (JWTError, ValueError, TypeError):
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        email = payload.get("sub")
+        if not email:
+            raise HTTPException(
+                status_code=401,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except JWTError:
+        raise HTTPException(
+            status_code=401,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    db = SessionLocal()
+    try:
+        if str(email).isdigit():
+            user = db.query(User).filter(User.id == int(email)).first()
+        else:
+            user = db.query(User).filter(User.email == str(email)).first()
+    finally:
+        db.close()
+
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user
+
+
+def get_current_user_id(current_user: User = Depends(get_current_user)) -> int:
+    """Extract user ID from the get_current_user dependency."""
+    return current_user.id
 
 
 @app.get("/")
@@ -361,8 +398,10 @@ def register_user(user: UserRegister):
             detail="Email is already registered",
         )
 
+    username_val = getattr(user, "username", None) or user.email.split("@")[0]
     new_user = User(
         email=user.email,
+        username=username_val,
         hashed_password=hash_password(user.password),
     )
 
@@ -398,8 +437,14 @@ def login_user(user: UserLogin):
             detail="Invalid email or password",
         )
 
+    safe_name = getattr(existing_user, "username", None) or existing_user.email.split("@")[0]
     access_token = create_access_token(
-        data={"sub": str(existing_user.id)}
+        data={
+            "sub": existing_user.email,
+            "user_id": existing_user.id,
+            "email": existing_user.email,
+            "name": safe_name,
+        }
     )
 
     db.close()
@@ -407,7 +452,25 @@ def login_user(user: UserLogin):
     return {
         "access_token": access_token,
         "token_type": "bearer",
+        "user": {
+            "id": existing_user.id,
+            "email": existing_user.email,
+            "username": safe_name,
+        },
     }
+
+
+@app.get("/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    """Fetch current logged-in user safe details from PostgreSQL."""
+    safe_username = getattr(current_user, "username", None) or current_user.email.split("@")[0]
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "username": safe_username,
+        "name": safe_username,
+    }
+
 
 
 @app.get("/test-token")

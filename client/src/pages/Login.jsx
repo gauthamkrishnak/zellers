@@ -7,7 +7,7 @@ import { useAuth } from "../context/AuthContext";
 
 function Login() {
   const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ email: "", password: "", username: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -29,6 +29,7 @@ function Login() {
         await axios.post("http://127.0.0.1:8000/register", {
           email: form.email,
           password: form.password,
+          username: form.username.trim() || form.email.split("@")[0],
         });
       }
 
@@ -37,7 +38,7 @@ function Login() {
         password: form.password,
       });
 
-      login(response.data.access_token);
+      login(response.data.access_token, response.data.user);
       navigate("/");
     } catch (error) {
       setError(
@@ -201,7 +202,27 @@ function Login() {
                 {error}
               </div>
             )}
-            {/* Username */}
+
+            {/* Username field – only shown on sign up */}
+            {isRegistering && (
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="username" className="text-sm font-semibold text-slate-700">
+                  Username
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
+                  value={form.username}
+                  onChange={handleChange}
+                  placeholder="Choose a username"
+                  className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 transition-all duration-200 text-sm shadow-sm"
+                />
+              </div>
+            )}
+
+            {/* Email */}
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="email"
