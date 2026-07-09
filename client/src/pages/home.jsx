@@ -126,6 +126,7 @@ import Loader from "../components/Loader";
 import { useOutletContext } from "react-router-dom";
 import { Search } from "lucide-react";
 import axios from "axios";
+import { useAuth } from "../context/AuthContext";
 
 function Home() {
   const [selectedcategory, setselectedcategory] = useState("All");
@@ -136,6 +137,7 @@ function Home() {
   // true while user is still typing (debounce window)
   const [isSearching, setIsSearching] = useState(false);
   const isFirstRender = useRef(true);
+  const { getAuthHeaders } = useAuth();
 
   const fetchProducts = async () => {
     setIsLoading(true);
@@ -145,6 +147,7 @@ function Home() {
           category: selectedcategory,
           search: debouncedSearch,
         },
+        headers: getAuthHeaders(),
       });
 
       setProducts(response.data);

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 import Loader from "../components/Loader";
 
 function ProductDetails() {
@@ -19,6 +20,7 @@ function ProductDetails() {
   const navigate = useNavigate();
   const { refreshWishlist } = useWishlist();
   const { cartItems, addToCart, setIsCartOpen } = useCart();
+  const { getAuthHeaders, isAuthenticated } = useAuth();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,6 +30,7 @@ function ProductDetails() {
       try {
         const response = await axios.get(
           `http://127.0.0.1:8000/products/${id}`,
+          { headers: getAuthHeaders() },
         );
 
         setProduct(response.data);
@@ -42,9 +45,17 @@ function ProductDetails() {
   }, [id]);
 
   const handleWishlist = async () => {
+    if (!isAuthenticated) {
+      alert("Please login to save items to your wishlist.");
+      navigate("/login");
+      return;
+    }
+
     try {
       const response = await axios.put(
         `http://127.0.0.1:8000/products/${id}/wishlist`,
+        {},
+        { headers: getAuthHeaders() },
       );
 
       setProduct(response.data);

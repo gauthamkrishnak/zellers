@@ -1,41 +1,82 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import axios from "axios";
+import { useAuth } from "./AuthContext";
 
 const CartContext = createContext(null);
 
 export function CartProvider({ children }) {
-  const [cartItems, setCartItems] = useState(() => {
-    const savedCart = localStorage.getItem("zellersCart");
-    return savedCart ? JSON.parse(savedCart) : [];
-  });
+  const [cartItems, setCartItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const { getAuthHeaders, isAuthenticated } = useAuth();
+
+  // Fetch cart from the backend
+  const fetchCart = useCallback(async () => {
+    if (!isAuthenticated) {
+      setCartItems([]);
+      return;
+    }
+    try {
+      const response = await axios.get("http://127.0.0.1:8000/cart/", {
+        headers: getAuthHeaders(),
+      });
+      setCartItems(response.data);
+    } catch (error) {
+      console.error("Error fetching cart:", error);
+    }
+  }, [getAuthHeaders, isAuthenticated]);
 
   useEffect(() => {
-    localStorage.setItem("zellersCart", JSON.stringify(cartItems));
-  }, [cartItems]);
+    fetchCart();
+  }, [fetchCart]);
 
-  const addToCart = (product) => {
-    setCartItems((prevItems) => {
-      const exists = prevItems.find((item) => item.id === product.id);
-      if (exists) {
-        return prevItems; // Product already in cart
-      }
-      return [...prevItems, { ...product, quantity: 1 }];
-    });
+  const addToCart = async (product) => {
+    if (!isAuthenticated) {
+      alert("Please login to add items to your cart.");
+      return;
+    }
+    try {
+      await axios.post(
+        `http://127.0.0.1:8000/cart/${product.id}`,
+        {},
+        { headers: getAuthHeaders() },
+      );
+      setCartItems((prevItems) => {
+        const exists = prevItems.find((item) => item.id === product.id);
+        if (exists) return prevItems;
+        return [...prevItems, product];
+      });
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+    }
   };
 
-  const removeFromCart = (productId) => {
-    setCartItems((prevItems) => prevItems.filter((item) => item.id !== productId));
+  const removeFromCart = async (productId) => {
+    try {
+      await axios.delete(
+        `http://127.0.0.1:8000/cart/${productId}`,
+        { headers: getAuthHeaders() },
+      );
+      setCartItems((prevItems) => prevItems.filter((item) => item.id !== productId));
+    } catch (error) {
+      console.error("Error removing from cart:", error);
+    }
   };
 
-  const clearCart = () => {
-    setCartItems([]);
+  const clearCart = async () => {
+    try {
+      await axios.delete("http://127.0.0.1:8000/cart/", {
+        headers: getAuthHeaders(),
+      });
+      setCartItems([]);
+    } catch (error) {
+      console.error("Error clearing cart:", error);
+    }
   };
 
-  const checkout = () => {
-    // Simulate checkout
+  const checkout = async () => {
     if (cartItems.length > 0) {
       alert("Checkout successful! Your order has been placed.");
-      clearCart();
+      await clearCart();
       setIsCartOpen(false);
     }
   };
@@ -53,6 +94,7 @@ export function CartProvider({ children }) {
         cartTotal,
         isCartOpen,
         setIsCartOpen,
+        fetchCart,
       }}
     >
       {children}

@@ -1,15 +1,17 @@
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, SessionLocal
-from models import Base, Product,User
+from models import Base, Product, User, Wishlist, Cart
 from schemas import UserRegister, UserLogin
 from auth import hash_password, verify_password, create_access_token
 from jose import jwt, JWTError
 from auth import SECRET_KEY, ALGORITHM
 from fastapi.staticfiles import StaticFiles
+from typing import Optional
 
 app = FastAPI()
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 # Allow React frontend to call this backend
 app.add_middleware(
     CORSMiddleware,
@@ -26,14 +28,35 @@ app.add_middleware(
 Base.metadata.create_all(bind=engine)
 
 
+# ─── Auth dependency ───────────────────────────────────────────────
+def get_current_user_id(authorization: str = Header(...)):
+    """Extract user ID from the Bearer token in the Authorization header."""
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+
+    token = authorization.split(" ", 1)[1]
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = int(payload.get("sub"))
+        return user_id
+    except (JWTError, ValueError, TypeError):
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
 @app.get("/")
 def home():
     return {"message": "Hello World"}
 
 
-# GET all products, with backend filtering
+# ─── Products ──────────────────────────────────────────────────────
+
 @app.get("/products/")
-def get_products(category: str = "All", search: str = ""):
+def get_products(
+    category: str = "All",
+    search: str = "",
+    authorization: Optional[str] = Header(None),
+):
     db = SessionLocal()
 
     query = db.query(Product)
@@ -46,60 +69,133 @@ def get_products(category: str = "All", search: str = ""):
 
     products = query.all()
 
+    # Determine wishlisted product IDs for the current user
+    wishlisted_ids = set()
+    if authorization and authorization.startswith("Bearer "):
+        try:
+            token = authorization.split(" ", 1)[1]
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            user_id = int(payload.get("sub"))
+            wishlisted_ids = {
+                w.product_id
+                for w in db.query(Wishlist)
+                .filter(Wishlist.user_id == user_id)
+                .all()
+            }
+        except (JWTError, ValueError, TypeError):
+            pass
+
+    # Add is_wishlisted field to each product
+    result = []
+    for p in products:
+        result.append({
+            "id": p.id,
+            "title": p.title,
+            "price": p.price,
+            "type": p.type,
+            "location": p.location,
+            "listed": p.listed,
+            "image": p.image,
+            "desc": p.desc,
+            "is_wishlisted": p.id in wishlisted_ids,
+        })
+
     db.close()
+    return result
 
-    return products
-   
 
-# PUT: toggle one product's wishlist status
-# @app.put("/products/{product_id}/wishlist")
-# def update_wishlist(product_id: int):
-#     db = SessionLocal()
-
-#     product = db.query(Product).filter(Product.id == product_id).first()
-
-#     if product is None:
-#         db.close()
-#         raise HTTPException(status_code=404, detail="Product not found")
-
-#     product.is_wishlisted = not product.is_wishlisted
-
-#     db.commit()
-#     db.refresh(product)
-
-#     db.close()
-
-#     return product
-@app.get("/wishlist/")
-def get_wishlist():
+@app.get("/products/{product_id}")
+def get_product(
+    product_id: int,
+    authorization: Optional[str] = Header(None),
+):
     db = SessionLocal()
 
-    wishlist_products = (
-        db.query(Product)
-        .filter(Product.is_wishlisted == True)
+    product = db.query(Product).filter(Product.id == product_id).first()
+
+    if product is None:
+        db.close()
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    # Determine if wishlisted by current user
+    is_wishlisted = False
+    if authorization and authorization.startswith("Bearer "):
+        try:
+            token = authorization.split(" ", 1)[1]
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            user_id = int(payload.get("sub"))
+            is_wishlisted = (
+                db.query(Wishlist)
+                .filter(
+                    Wishlist.user_id == user_id,
+                    Wishlist.product_id == product_id,
+                )
+                .first()
+                is not None
+            )
+        except (JWTError, ValueError, TypeError):
+            pass
+
+    result = {
+        "id": product.id,
+        "title": product.title,
+        "price": product.price,
+        "type": product.type,
+        "location": product.location,
+        "listed": product.listed,
+        "image": product.image,
+        "desc": product.desc,
+        "is_wishlisted": is_wishlisted,
+    }
+
+    db.close()
+    return result
+
+
+# ─── Wishlist (per-user) ──────────────────────────────────────────
+
+@app.get("/wishlist/")
+def get_wishlist(user_id: int = Depends(get_current_user_id)):
+    db = SessionLocal()
+
+    wishlist_entries = (
+        db.query(Wishlist)
+        .filter(Wishlist.user_id == user_id)
         .all()
     )
 
+    product_ids = [entry.product_id for entry in wishlist_entries]
+
+    products = (
+        db.query(Product)
+        .filter(Product.id.in_(product_ids))
+        .all()
+    )
+
+    result = [
+        {
+            "id": p.id,
+            "title": p.title,
+            "price": p.price,
+            "type": p.type,
+            "location": p.location,
+            "listed": p.listed,
+            "image": p.image,
+            "desc": p.desc,
+            "is_wishlisted": True,
+        }
+        for p in products
+    ]
+
     db.close()
-
-    return wishlist_products
-@app.get("/products/{product_id}")
-def get_product(product_id: int):
-    db = SessionLocal()
-
-    product = db.query(Product).filter(Product.id == product_id).first()
-
-    if product is None:
-        db.close()
-        raise HTTPException(status_code=404, detail="Product not found")
-
-    db.close()
-
-    return product
+    return result
 
 
 @app.put("/products/{product_id}/wishlist")
-def update_wishlist(product_id: int):
+def toggle_wishlist(
+    product_id: int,
+    user_id: int = Depends(get_current_user_id),
+):
     db = SessionLocal()
 
     product = db.query(Product).filter(Product.id == product_id).first()
@@ -108,13 +204,150 @@ def update_wishlist(product_id: int):
         db.close()
         raise HTTPException(status_code=404, detail="Product not found")
 
-    product.is_wishlisted = not product.is_wishlisted
+    existing = (
+        db.query(Wishlist)
+        .filter(
+            Wishlist.user_id == user_id,
+            Wishlist.product_id == product_id,
+        )
+        .first()
+    )
+
+    if existing:
+        db.delete(existing)
+        is_wishlisted = False
+    else:
+        db.add(Wishlist(user_id=user_id, product_id=product_id))
+        is_wishlisted = True
+
+    result = {
+        "id": product.id,
+        "title": product.title,
+        "price": product.price,
+        "type": product.type,
+        "location": product.location,
+        "listed": product.listed,
+        "image": product.image,
+        "desc": product.desc,
+        "is_wishlisted": is_wishlisted,
+    }
 
     db.commit()
-    db.refresh(product)
+    db.close()
+    return result
+
+
+# ─── Cart (per-user) ──────────────────────────────────────────────
+
+@app.get("/cart/")
+def get_cart(user_id: int = Depends(get_current_user_id)):
+    db = SessionLocal()
+
+    cart_entries = (
+        db.query(Cart)
+        .filter(Cart.user_id == user_id)
+        .all()
+    )
+
+    product_ids = [entry.product_id for entry in cart_entries]
+
+    products = (
+        db.query(Product)
+        .filter(Product.id.in_(product_ids))
+        .all()
+    )
+
+    result = [
+        {
+            "id": p.id,
+            "title": p.title,
+            "price": p.price,
+            "type": p.type,
+            "location": p.location,
+            "listed": p.listed,
+            "image": p.image,
+            "desc": p.desc,
+        }
+        for p in products
+    ]
+
+    db.close()
+    return result
+
+
+@app.post("/cart/{product_id}")
+def add_to_cart(
+    product_id: int,
+    user_id: int = Depends(get_current_user_id),
+):
+    db = SessionLocal()
+
+    product = db.query(Product).filter(Product.id == product_id).first()
+
+    if product is None:
+        db.close()
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    existing = (
+        db.query(Cart)
+        .filter(
+            Cart.user_id == user_id,
+            Cart.product_id == product_id,
+        )
+        .first()
+    )
+
+    if existing:
+        db.close()
+        return {"message": "Product already in cart"}
+
+    db.add(Cart(user_id=user_id, product_id=product_id))
+    db.commit()
     db.close()
 
-    return product
+    return {"message": "Product added to cart"}
+
+
+@app.delete("/cart/{product_id}")
+def remove_from_cart(
+    product_id: int,
+    user_id: int = Depends(get_current_user_id),
+):
+    db = SessionLocal()
+
+    entry = (
+        db.query(Cart)
+        .filter(
+            Cart.user_id == user_id,
+            Cart.product_id == product_id,
+        )
+        .first()
+    )
+
+    if entry is None:
+        db.close()
+        raise HTTPException(status_code=404, detail="Product not in cart")
+
+    db.delete(entry)
+    db.commit()
+    db.close()
+
+    return {"message": "Product removed from cart"}
+
+
+@app.delete("/cart/")
+def clear_cart(user_id: int = Depends(get_current_user_id)):
+    db = SessionLocal()
+
+    db.query(Cart).filter(Cart.user_id == user_id).delete()
+    db.commit()
+    db.close()
+
+    return {"message": "Cart cleared"}
+
+
+# ─── Auth ──────────────────────────────────────────────────────────
+
 @app.post("/register")
 def register_user(user: UserRegister):
     db = SessionLocal()
@@ -175,6 +408,7 @@ def login_user(user: UserLogin):
         "access_token": access_token,
         "token_type": "bearer",
     }
+
 
 @app.get("/test-token")
 def test_token(token: str):

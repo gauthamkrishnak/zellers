@@ -4,20 +4,25 @@ import ProductCard from "../components/productcard";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, ArrowLeft } from "lucide-react";
 import axios from "axios";
+import { useAuth } from "../context/AuthContext";
 
 function Wishlist() {
   const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
   const [wishlistProducts, setWishlistProducts] = useState([]);
-  const fetchWishlist = async () => {
-    console.log("fn call");
+  const { getAuthHeaders } = useAuth();
 
+  const fetchWishlist = async () => {
     try {
-      const response = await axios.get("http://127.0.0.1:8000/wishlist/");
+      const response = await axios.get("http://127.0.0.1:8000/wishlist/", {
+        headers: getAuthHeaders(),
+      });
       setWishlistProducts(response.data);
     } catch (error) {
       console.error("Error fetching wishlist:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -29,7 +34,6 @@ function Wishlist() {
 
   useEffect(() => {
     fetchWishlist();
-    console.log("fn call-2");
   }, []);
 
   if (wishlistProducts.length === 0) {

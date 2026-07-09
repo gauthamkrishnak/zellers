@@ -3,14 +3,20 @@ import { Heart, MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useWishlist } from "../context/WishlistContext";
+import { useAuth } from "../context/AuthContext";
 
 function ProductCard(props) {
   const navigate = useNavigate();
   const { refreshWishlist } = useWishlist(props);
+  const { getAuthHeaders, isAuthenticated } = useAuth();
 
   const { id, title, price, image, location, listed } = props;
 
   const [isWishlisted, setIsWishlisted] = useState(props.is_wishlisted);
+
+  useEffect(() => {
+    setIsWishlisted(props.is_wishlisted);
+  }, [props.is_wishlisted]);
 
   const handleCardClick = () => {
     const formattedTitle = title.replaceAll(" ", "-").toLowerCase();
@@ -20,13 +26,20 @@ function ProductCard(props) {
   const handleWishlistClick = async (e) => {
     e.stopPropagation();
 
+    if (!isAuthenticated) {
+      alert("Please login to save items to your wishlist.");
+      navigate("/login");
+      return;
+    }
+
     try {
       const response = await axios.put(
         `http://127.0.0.1:8000/products/${id}/wishlist`,
+        {},
+        { headers: getAuthHeaders() },
       );
 
       setIsWishlisted(response.data.is_wishlisted);
-      console.log("wishlist data", response);
       refreshWishlist();
       if (props.onWishlistToggle) {
         props.onWishlistToggle(id, response.data.is_wishlisted);
@@ -35,10 +48,6 @@ function ProductCard(props) {
       console.error("Could not update wishlist:", error);
     }
   };
-  useEffect(() => {
-    // alert("wishlist updated");
-    // console.log("wishlist updated");
-  }, []);
 
   return (
     <div

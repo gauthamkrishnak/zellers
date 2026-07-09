@@ -15,6 +15,12 @@ export function AuthProvider({ children }) {
     setToken(null);
   };
 
+  // Helper to get auth headers for API calls
+  const getAuthHeaders = () => {
+    if (!token) return {};
+    return { Authorization: `Bearer ${token}` };
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -22,6 +28,7 @@ export function AuthProvider({ children }) {
         isAuthenticated: Boolean(token),
         login,
         logout,
+        getAuthHeaders,
       }}
     >
       {children}
