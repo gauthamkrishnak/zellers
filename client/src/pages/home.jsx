@@ -140,7 +140,11 @@ function Home() {
   const { getAuthHeaders } = useAuth();
 
   const fetchProducts = async () => {
+    const minimumLoaderTime = 800;
+    const startTime = Date.now();
+
     setIsLoading(true);
+
     try {
       const response = await axios.get("http://127.0.0.1:8000/products/", {
         params: {
@@ -154,7 +158,12 @@ function Home() {
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {
-      setIsLoading(false);
+      const elapsedTime = Date.now() - startTime;
+      const remainingTime = Math.max(0, minimumLoaderTime - elapsedTime);
+
+      setTimeout(() => {
+        setIsLoading(false);
+      }, remainingTime);
     }
   };
 
@@ -177,7 +186,7 @@ function Home() {
     fetchProducts();
   }, [selectedcategory, debouncedSearch]);
 
-  const showLoader = isLoading || isSearching;
+  const showLoader = isLoading;
 
   return (
     <div className="flex flex-col gap-8 pb-16">
@@ -203,18 +212,15 @@ function Home() {
             </h2>
 
             <div className="flex items-center gap-2">
-              {showLoader && <Loader size={32} />}
-              {!showLoader && (
-                <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
-                  {products.length} {products.length === 1 ? "item" : "items"}
-                </span>
-              )}
+              <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
+                {products.length} {products.length === 1 ? "item" : "items"}
+              </span>
             </div>
           </div>
 
           {showLoader ? (
             <div className="flex flex-col items-center justify-center py-24">
-              <Loader size={80} />
+              <Loader height={50} width={6} />
               <p className="text-slate-400 text-sm mt-3 font-medium">
                 {isSearching ? "Searching..." : "Loading listings..."}
               </p>

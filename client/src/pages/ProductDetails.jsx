@@ -68,14 +68,13 @@ function ProductDetails() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32">
-        <Loader size={90} />
-        <p className="text-slate-400 text-sm mt-3 font-medium">
+        <Loader height={55} width={6} />
+        <p className="mt-4 text-sm font-medium text-slate-400">
           Loading product...
         </p>
       </div>
     );
   }
-
   if (!product) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 text-center">

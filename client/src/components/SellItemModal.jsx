@@ -5,8 +5,15 @@ import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 
 const CATEGORIES = [
-  "Mobiles", "Electronics", "Vehicles", "Furniture",
-  "Fashion", "Books", "Sports", "Home Appliances", "Others"
+  "Mobiles",
+  "Electronics",
+  "Vehicles",
+  "Furniture",
+  "Fashion",
+  "Books",
+  "Sports",
+  "Home Appliances",
+  "Others",
 ];
 
 export default function SellItemModal({ isOpen, onClose, onSuccess }) {
@@ -14,7 +21,11 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
   const fileInputRef = useRef(null);
 
   const [form, setForm] = useState({
-    title: "", price: "", type: "", location: "", desc: ""
+    title: "",
+    price: "",
+    type: "",
+    location: "",
+    desc: "",
   });
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -55,8 +66,14 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!image) { setError("Please upload an image."); return; }
-    if (!form.type) { setError("Please select a category."); return; }
+    if (!image) {
+      setError("Please upload an image.");
+      return;
+    }
+    if (!form.type) {
+      setError("Please select a category.");
+      return;
+    }
 
     setError("");
     setLoading(true);
@@ -104,7 +121,9 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 sticky top-0 bg-white z-10">
           <div>
             <h2 className="text-xl font-bold text-slate-900">Post an Item</h2>
-            <p className="text-sm text-slate-500 mt-0.5">Fill in the details to list your item</p>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Fill in the details to list your item
+            </p>
           </div>
           <button
             onClick={handleClose}
@@ -125,7 +144,10 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
             </p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-5">
+          <form
+            onSubmit={handleSubmit}
+            className="px-6 py-5 flex flex-col gap-5"
+          >
             {error && (
               <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl">
                 {error}
@@ -140,14 +162,22 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
               className="relative border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl h-44 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors bg-slate-50 hover:bg-indigo-50/30 overflow-hidden"
             >
               {preview ? (
-                <img src={preview} alt="Preview" className="absolute inset-0 w-full h-full object-cover rounded-2xl" />
+                <img
+                  src={preview}
+                  alt="Preview"
+                  className="absolute inset-0 w-full h-full object-cover rounded-2xl"
+                />
               ) : (
                 <>
                   <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
                     <ImageIcon size={22} className="text-indigo-500" />
                   </div>
-                  <p className="text-sm font-semibold text-slate-600">Click or drag to upload image</p>
-                  <p className="text-xs text-slate-400">JPG, PNG, WEBP — max 5MB</p>
+                  <p className="text-sm font-semibold text-slate-600">
+                    Click or drag to upload image
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    JPG, PNG, WEBP — max 5MB
+                  </p>
                 </>
               )}
               <input
@@ -161,7 +191,10 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
             {preview && (
               <button
                 type="button"
-                onClick={() => { setImage(null); setPreview(null); }}
+                onClick={() => {
+                  setImage(null);
+                  setPreview(null);
+                }}
                 className="text-xs text-red-500 hover:text-red-700 font-medium -mt-3 self-start cursor-pointer"
               >
                 Remove image
@@ -170,9 +203,14 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
 
             {/* Title */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-slate-700">Title *</label>
+              <label className="text-sm font-semibold text-slate-700">
+                Title *
+              </label>
               <input
-                name="title" value={form.title} onChange={handleChange} required
+                name="title"
+                value={form.title}
+                onChange={handleChange}
+                required
                 placeholder="e.g. iPhone 13 Pro, IKEA Table..."
                 className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 transition-all"
               />
@@ -181,30 +219,51 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
             {/* Price + Category row */}
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold text-slate-700">Price (₹) *</label>
+                <label className="text-sm font-semibold text-slate-700">
+                  Price (₹) *
+                </label>
                 <input
-                  name="price" value={form.price} onChange={handleChange} required
-                  type="number" min="0" placeholder="0"
+                  name="price"
+                  value={form.price}
+                  onChange={handleChange}
+                  required
+                  type="number"
+                  min="0"
+                  placeholder="0"
                   className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 transition-all"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold text-slate-700">Category *</label>
+                <label className="text-sm font-semibold text-slate-700">
+                  Category *
+                </label>
                 <select
-                  name="type" value={form.type} onChange={handleChange} required
+                  name="type"
+                  value={form.type}
+                  onChange={handleChange}
+                  required
                   className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 transition-all bg-white appearance-none cursor-pointer"
                 >
                   <option value="">Select...</option>
-                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
 
             {/* Location */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-slate-700">Location *</label>
+              <label className="text-sm font-semibold text-slate-700">
+                Location *
+              </label>
               <input
-                name="location" value={form.location} onChange={handleChange} required
+                name="location"
+                value={form.location}
+                onChange={handleChange}
+                required
                 placeholder="e.g. Kakkanad, Edapally, MG Road..."
                 className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 transition-all"
               />
@@ -212,10 +271,16 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
 
             {/* Description */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-slate-700">Description *</label>
+              <label className="text-sm font-semibold text-slate-700">
+                Description *
+              </label>
               <textarea
-                name="desc" value={form.desc} onChange={handleChange} required
-                rows={3} placeholder="Describe your item — condition, features, reason for selling..."
+                name="desc"
+                value={form.desc}
+                onChange={handleChange}
+                required
+                rows={3}
+                placeholder="Describe your item — condition, features, reason for selling..."
                 className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 transition-all resize-none"
               />
             </div>
@@ -227,15 +292,19 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
               className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 hover:scale-[1.01] active:scale-95 transition-all duration-200 cursor-pointer"
             >
               {loading ? (
-                <><Loader2 size={18} className="animate-spin" /> Posting...</>
+                <>
+                  <Loader height={50} width={6} /> Posting...
+                </>
               ) : (
-                <><Upload size={18} /> Post Item</>
+                <>
+                  <Upload size={18} /> Post Item
+                </>
               )}
             </button>
           </form>
         )}
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

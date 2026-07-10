@@ -1,11 +1,28 @@
-function Loader() {
+import { ScaleLoader } from "react-spinners";
+
+function Loader({
+  color = "#4f46e5",
+  height = 35,
+  width = 4,
+  radius = 2,
+  margin = 2,
+  loading = true,
+  className = "",
+}) {
   return (
     <div
-      className="min-h-screen flex flex-col
-     items-center justify-center py-20  "
+      className={`flex items-center justify-center ${className}`}
+      role="status"
+      aria-label="Loading"
     >
-      <div className="w-10 h-10 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
-      <p className="mt-4 text-sm font-medium text-slate-500">Loading...</p>
+      <ScaleLoader
+        color={color}
+        loading={loading}
+        height={height}
+        width={width}
+        radius={radius}
+        margin={margin}
+      />
     </div>
   );
 }
