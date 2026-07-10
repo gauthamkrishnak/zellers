@@ -1,4 +1,6 @@
-from fastapi import FastAPI, HTTPException, Depends, Header
+import os
+import uuid
+from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Form, status
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, SessionLocal
 from models import Base, Product, User, Wishlist, Cart
@@ -23,6 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Create tables if they do not already exist
@@ -139,6 +142,112 @@ def get_products(
 
     db.close()
     return result
+
+
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+ALLOWED_IMAGE_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
+MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+@app.post("/products/", status_code=status.HTTP_201_CREATED)
+async def create_product(
+    title: str = Form(...),
+    price: int = Form(...),
+    type: str = Form(...),
+    location: str = Form(...),
+    desc: str = Form(...),
+    image: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    if not title or not title.strip():
+        raise HTTPException(status_code=400, detail="Title is required.")
+    if price < 0:
+        raise HTTPException(status_code=400, detail="Price cannot be negative.")
+    if not type or not type.strip():
+        raise HTTPException(status_code=400, detail="Category is required.")
+    if not location or not location.strip():
+        raise HTTPException(status_code=400, detail="Location is required.")
+    if not desc or not desc.strip():
+        raise HTTPException(status_code=400, detail="Description is required.")
+
+    filename = image.filename or "upload.jpg"
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in ALLOWED_IMAGE_EXTENSIONS and image.content_type not in ALLOWED_IMAGE_MIME_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid image format. Only JPG, JPEG, PNG, and WEBP images are accepted."
+        )
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        ext_map = {
+            "image/jpeg": ".jpg",
+            "image/jpg": ".jpg",
+            "image/png": ".png",
+            "image/webp": ".webp",
+        }
+        ext = ext_map.get(image.content_type, ".jpg")
+
+    contents = await image.read()
+    if len(contents) > MAX_IMAGE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail="Image size exceeds maximum allowed limit of 5 MB."
+        )
+    if len(contents) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded image file is empty."
+        )
+
+    unique_filename = f"{uuid.uuid4().hex}{ext}"
+    upload_dir = "uploads"
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, unique_filename)
+
+    try:
+        with open(file_path, "wb") as f:
+            f.write(contents)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to save image file.")
+
+    db = SessionLocal()
+    try:
+        new_product = Product(
+            title=title.strip(),
+            price=price,
+            type=type.strip(),
+            location=location.strip(),
+            listed="Just now",
+            image=unique_filename,
+            desc=desc.strip(),
+        )
+        db.add(new_product)
+        db.commit()
+        db.refresh(new_product)
+    except Exception as e:
+        db.rollback()
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save product details to database."
+        )
+    finally:
+        db.close()
+
+    return {
+        "id": new_product.id,
+        "title": new_product.title,
+        "price": new_product.price,
+        "type": new_product.type,
+        "location": new_product.location,
+        "listed": new_product.listed,
+        "image": new_product.image,
+        "desc": new_product.desc,
+        "is_wishlisted": False,
+    }
 
 
 @app.get("/products/{product_id}")

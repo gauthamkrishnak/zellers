@@ -1,6 +1,14 @@
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { X, Upload, ImageIcon, CheckCircle2, Loader2 } from "lucide-react";
+import {
+  X,
+  Upload,
+  ImageIcon,
+  CheckCircle2,
+  Loader2,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 
@@ -15,6 +23,18 @@ const CATEGORIES = [
   "Home Appliances",
   "Others",
 ];
+
+const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+const formatFileSize = (bytes) => {
+  if (!bytes) return "0 B";
+  const k = 1024;
+  if (bytes < k) return `${bytes} B`;
+  if (bytes < k * k) return `${(bytes / k).toFixed(1)} KB`;
+  return `${(bytes / (k * k)).toFixed(2)} MB`;
+};
 
 export default function SellItemModal({ isOpen, onClose, onSuccess }) {
   const { token } = useAuth();
@@ -32,23 +52,55 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
+  const validateAndSetImage = (file) => {
     if (!file) return;
+
+    const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+    const isValidExt = ALLOWED_EXTENSIONS.includes(ext);
+    const isValidType = ALLOWED_TYPES.includes(file.type);
+
+    if (!isValidExt && !isValidType) {
+      setError(
+        "Invalid image format. Only JPG, JPEG, PNG, and WEBP images are accepted."
+      );
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setError("Image size exceeds maximum limit of 5 MB.");
+      return;
+    }
+
+    setError("");
     setImage(file);
     setPreview(URL.createObjectURL(file));
   };
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    validateAndSetImage(file);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    if (!loading) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
   const handleDrop = (e) => {
     e.preventDefault();
+    setIsDragging(false);
+    if (loading) return;
     const file = e.dataTransfer.files[0];
-    if (!file) return;
-    setImage(file);
-    setPreview(URL.createObjectURL(file));
+    validateAndSetImage(file);
   };
 
   const resetForm = () => {
@@ -57,15 +109,19 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
     setPreview(null);
     setError("");
     setSuccess(false);
+    setIsDragging(false);
   };
 
   const handleClose = () => {
+    if (loading) return;
     resetForm();
     onClose();
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
+
     if (!image) {
       setError("Please upload an image.");
       return;
@@ -87,17 +143,17 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
     data.append("image", image);
 
     try {
-      await axios.post("http://127.0.0.1:8000/products/", data, {
+      const response = await axios.post("http://127.0.0.1:8000/products/", data, {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
+          // Do NOT manually set Content-Type: multipart/form-data so the browser includes boundary
         },
       });
       setSuccess(true);
       setTimeout(() => {
         handleClose();
-        onSuccess?.();
-      }, 1800);
+        onSuccess?.(response.data);
+      }, 1500);
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to post item. Try again.");
     } finally {
@@ -108,203 +164,261 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
         onClick={handleClose}
       />
 
-      {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto z-10">
+      {/* Modal Container */}
+      <div className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden z-10 border border-slate-100">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 sticky top-0 bg-white z-10">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4.5 border-b border-slate-100 bg-white z-10 shrink-0">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Post an Item</h2>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Fill in the details to list your item
+            <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+              Post an Item
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              Fill in the details to list your item on Zellers
             </p>
           </div>
           <button
             onClick={handleClose}
-            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition cursor-pointer"
+            disabled={loading}
+            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-40 rounded-full transition cursor-pointer"
           >
             <X size={20} />
           </button>
         </div>
 
-        {success ? (
-          <div className="flex flex-col items-center justify-center py-20 px-6 gap-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
-              <CheckCircle2 size={36} className="text-emerald-500" />
-            </div>
-            <h3 className="text-xl font-bold text-slate-800">Item Listed!</h3>
-            <p className="text-slate-500 text-sm text-center">
-              Your item has been posted to the marketplace successfully.
-            </p>
-          </div>
-        ) : (
-          <form
-            onSubmit={handleSubmit}
-            className="px-6 py-5 flex flex-col gap-5"
-          >
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl">
-                {error}
+        {/* Scrollable Body */}
+        <div className="overflow-y-auto flex-1">
+          {success ? (
+            <div className="flex flex-col items-center justify-center py-16 sm:py-20 px-6 gap-4">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center animate-bounce">
+                <CheckCircle2 size={36} className="text-emerald-600" />
               </div>
-            )}
-
-            {/* Image Upload */}
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              onDrop={handleDrop}
-              onDragOver={(e) => e.preventDefault()}
-              className="relative border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl h-44 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors bg-slate-50 hover:bg-indigo-50/30 overflow-hidden"
+              <h3 className="text-xl font-extrabold text-slate-800">
+                Item Listed Successfully!
+              </h3>
+              <p className="text-slate-500 text-sm text-center max-w-xs">
+                Your item has been published to the Zellers marketplace.
+              </p>
+            </div>
+          ) : (
+            <form
+              onSubmit={handleSubmit}
+              className="px-5 sm:px-6 py-5 flex flex-col gap-5"
             >
-              {preview ? (
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className="absolute inset-0 w-full h-full object-cover rounded-2xl"
-                />
-              ) : (
-                <>
-                  <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <ImageIcon size={22} className="text-indigo-500" />
-                  </div>
-                  <p className="text-sm font-semibold text-slate-600">
-                    Click or drag to upload image
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    JPG, PNG, WEBP — max 5MB
-                  </p>
-                </>
+              {error && (
+                <div className="p-3.5 bg-red-50 border border-red-200/80 text-red-600 text-sm font-medium rounded-xl">
+                  {error}
+                </div>
               )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageChange}
-              />
-            </div>
-            {preview && (
-              <button
-                type="button"
-                onClick={() => {
-                  setImage(null);
-                  setPreview(null);
-                }}
-                className="text-xs text-red-500 hover:text-red-700 font-medium -mt-3 self-start cursor-pointer"
-              >
-                Remove image
-              </button>
-            )}
 
-            {/* Title */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-slate-700">
-                Title *
-              </label>
-              <input
-                name="title"
-                value={form.title}
-                onChange={handleChange}
-                required
-                placeholder="e.g. iPhone 13 Pro, IKEA Table..."
-                className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 transition-all"
-              />
-            </div>
+              {/* Drag & Drop Image Upload Area */}
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-slate-700">
+                  Product Image *
+                </label>
+                <div
+                  onClick={() => !loading && fileInputRef.current?.click()}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`relative border-2 border-dashed rounded-2xl h-52 flex flex-col items-center justify-center gap-2 transition-all overflow-hidden ${
+                    isDragging
+                      ? "border-indigo-500 bg-indigo-50/70 scale-[0.99]"
+                      : "border-slate-200 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50/30"
+                  } ${loading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+                >
+                  {preview ? (
+                    <div className="absolute inset-0 w-full h-full flex flex-col justify-between p-3 bg-slate-900/10">
+                      <img
+                        src={preview}
+                        alt="Preview"
+                        className="absolute inset-0 w-full h-full object-contain bg-slate-100"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900/80 via-slate-900/40 to-transparent p-3 pt-8 flex items-center justify-between text-white">
+                        <div className="truncate pr-2">
+                          <p className="text-xs font-semibold truncate">
+                            {image?.name}
+                          </p>
+                          <p className="text-[11px] text-slate-300">
+                            {formatFileSize(image?.size)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
+                        <ImageIcon size={24} className="text-indigo-600" />
+                      </div>
+                      <div className="text-center px-4">
+                        <p className="text-sm font-bold text-slate-700">
+                          Click to upload or drag & drop
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          JPG, JPEG, PNG, WEBP (Max 5 MB)
+                        </p>
+                      </div>
+                    </>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    disabled={loading}
+                    onChange={handleImageChange}
+                  />
+                </div>
 
-            {/* Price + Category row */}
-            <div className="grid grid-cols-2 gap-4">
+                {/* Remove & Replace Controls */}
+                {preview && !loading && (
+                  <div className="flex items-center gap-4 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
+                    >
+                      <RefreshCw size={13} /> Replace Image
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImage(null);
+                        setPreview(null);
+                        setError("");
+                      }}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-700 transition cursor-pointer"
+                    >
+                      <Trash2 size={13} /> Remove Image
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Title */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-semibold text-slate-700">
-                  Price (₹) *
+                  Title *
                 </label>
                 <input
-                  name="price"
-                  value={form.price}
+                  name="title"
+                  value={form.title}
                   onChange={handleChange}
                   required
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 transition-all"
+                  disabled={loading}
+                  placeholder="e.g. iPhone 13 Pro, IKEA Dining Table..."
+                  className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all disabled:bg-slate-100"
                 />
               </div>
+
+              {/* Price + Category Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-semibold text-slate-700">
+                    Price (₹) *
+                  </label>
+                  <input
+                    name="price"
+                    value={form.price}
+                    onChange={handleChange}
+                    required
+                    disabled={loading}
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all disabled:bg-slate-100"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-semibold text-slate-700">
+                    Category *
+                  </label>
+                  <select
+                    name="type"
+                    value={form.type}
+                    onChange={handleChange}
+                    required
+                    disabled={loading}
+                    className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all bg-white cursor-pointer disabled:bg-slate-100"
+                  >
+                    <option value="">Select Category...</option>
+                    {CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Location */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-semibold text-slate-700">
-                  Category *
+                  Location *
                 </label>
-                <select
-                  name="type"
-                  value={form.type}
+                <input
+                  name="location"
+                  value={form.location}
                   onChange={handleChange}
                   required
-                  className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 transition-all bg-white appearance-none cursor-pointer"
-                >
-                  <option value="">Select...</option>
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+                  disabled={loading}
+                  placeholder="e.g. Kakkanad, Edapally, MG Road..."
+                  className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all disabled:bg-slate-100"
+                />
               </div>
-            </div>
 
-            {/* Location */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-slate-700">
-                Location *
-              </label>
-              <input
-                name="location"
-                value={form.location}
-                onChange={handleChange}
-                required
-                placeholder="e.g. Kakkanad, Edapally, MG Road..."
-                className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 transition-all"
-              />
-            </div>
+              {/* Description + Character Counter */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-semibold text-slate-700">
+                    Description *
+                  </label>
+                  <span className="text-xs text-slate-400 font-medium">
+                    {form.desc.length}/1000 characters
+                  </span>
+                </div>
+                <textarea
+                  name="desc"
+                  value={form.desc}
+                  onChange={handleChange}
+                  required
+                  disabled={loading}
+                  maxLength={1000}
+                  rows={3}
+                  placeholder="Describe your item — condition, features, reason for selling..."
+                  className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all resize-none disabled:bg-slate-100"
+                />
+              </div>
 
-            {/* Description */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-slate-700">
-                Description *
-              </label>
-              <textarea
-                name="desc"
-                value={form.desc}
-                onChange={handleChange}
-                required
-                rows={3}
-                placeholder="Describe your item — condition, features, reason for selling..."
-                className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 transition-all resize-none"
-              />
-            </div>
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 hover:scale-[1.01] active:scale-95 transition-all duration-200 cursor-pointer"
-            >
-              {loading ? (
-                <>
-                  <Loader height={50} width={6} /> Posting...
-                </>
-              ) : (
-                <>
-                  <Upload size={18} /> Post Item
-                </>
-              )}
-            </button>
-          </form>
-        )}
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-75 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 hover:scale-[1.01] active:scale-95 transition-all duration-200 cursor-pointer disabled:cursor-not-allowed mt-1"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="animate-spin" size={18} />
+                    <span>Publishing listing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload size={18} />
+                    <span>Post Item</span>
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </div>,
-    document.body,
+    document.body
   );
 }
