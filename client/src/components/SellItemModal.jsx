@@ -24,6 +24,81 @@ const CATEGORIES = [
   "Others",
 ];
 
+const CONDITIONS = [
+  {
+    id: "Brand New",
+    title: "Brand New",
+    icon: "🆕",
+    desc: "Unused product in original packaging.",
+    examples: [
+      "Sealed iPhone",
+      "Unopened Headphones",
+      "New Gaming Mouse",
+      "Brand New Shoes",
+    ],
+  },
+  {
+    id: "Like New",
+    title: "Like New",
+    icon: "✨",
+    desc: "Used very little. Looks almost new. No visible scratches or damage.",
+    examples: [
+      "Laptop used for one week",
+      "Camera used twice",
+      "Tablet with no scratches",
+      "Monitor in perfect condition",
+    ],
+  },
+  {
+    id: "Excellent",
+    title: "Excellent",
+    icon: "⭐",
+    desc: "Minor cosmetic wear. Works perfectly.",
+    examples: [
+      "Phone with tiny scratches",
+      "Keyboard used for a few months",
+      "Office Chair in excellent condition",
+      "Graphics Card used for gaming",
+    ],
+  },
+  {
+    id: "Good",
+    title: "Good",
+    icon: "👍",
+    desc: "Visible signs of use. Fully functional.",
+    examples: [
+      "Bicycle with paint scratches",
+      "Study Table with minor dents",
+      "Sofa with slight wear",
+      "Television used for several years",
+    ],
+  },
+  {
+    id: "Fair",
+    title: "Fair",
+    icon: "🔧",
+    desc: "Heavy cosmetic wear. Still usable.",
+    examples: [
+      "Laptop with cracked body",
+      "Mobile with noticeable scratches",
+      "Chair with faded fabric",
+      "Washing Machine with cosmetic damage",
+    ],
+  },
+  {
+    id: "For Parts / Repair",
+    title: "For Parts / Repair",
+    icon: "⚠️",
+    desc: "Not fully functional. Needs repair.",
+    examples: [
+      "Phone with broken display",
+      "Laptop that doesn't boot",
+      "GPU requiring repair",
+      "Printer with hardware issues",
+    ],
+  },
+];
+
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -45,6 +120,7 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
     price: "",
     type: "",
     location: "",
+    condition: "Excellent",
     desc: "",
   });
   const [image, setImage] = useState(null);
@@ -104,7 +180,14 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
   };
 
   const resetForm = () => {
-    setForm({ title: "", price: "", type: "", location: "", desc: "" });
+    setForm({
+      title: "",
+      price: "",
+      type: "",
+      location: "",
+      condition: "Excellent",
+      desc: "",
+    });
     setImage(null);
     setPreview(null);
     setError("");
@@ -134,12 +217,13 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
     setError("");
     setLoading(true);
 
+    const fullDesc = `[Condition: ${form.condition}]\n\n${form.desc}`;
     const data = new FormData();
     data.append("title", form.title);
     data.append("price", form.price);
     data.append("type", form.type);
     data.append("location", form.location);
-    data.append("desc", form.desc);
+    data.append("desc", fullDesc);
     data.append("image", image);
 
     try {
@@ -172,7 +256,7 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
       />
 
       {/* Modal Container */}
-      <div className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden z-10 border border-slate-100">
+      <div className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden z-10 border border-slate-100">
         {/* Header */}
         <div className="flex items-center justify-between px-5 sm:px-6 py-4.5 border-b border-slate-100 bg-white z-10 shrink-0">
           <div>
@@ -371,6 +455,83 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
                   placeholder="e.g. Kakkanad, Edapally, MG Road..."
                   className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all disabled:bg-slate-100"
                 />
+              </div>
+
+              {/* Product Condition Section */}
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-semibold text-slate-700">
+                    Product Condition *
+                  </label>
+                  <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">
+                    Selected: {form.condition}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {CONDITIONS.map((cond) => {
+                    const isSelected = form.condition === cond.id;
+                    return (
+                      <div
+                        key={cond.id}
+                        onClick={() => {
+                          if (!loading) {
+                            setForm((prev) => ({ ...prev, condition: cond.id }));
+                          }
+                        }}
+                        className={`p-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? "border-indigo-600 bg-indigo-50/60 shadow-md ring-2 ring-indigo-500/20 scale-[1.02]"
+                            : "border-slate-200 hover:border-slate-300 bg-white hover:-translate-y-0.5 hover:shadow-sm"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xl" role="img" aria-label={cond.title}>
+                              {cond.icon}
+                            </span>
+                            {isSelected && (
+                              <CheckCircle2
+                                size={18}
+                                className="text-indigo-600 shrink-0"
+                              />
+                            )}
+                          </div>
+                          <h4
+                            className={`font-extrabold text-sm ${
+                              isSelected ? "text-indigo-900" : "text-slate-800"
+                            }`}
+                          >
+                            {cond.title}
+                          </h4>
+                          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                            {cond.desc}
+                          </p>
+                        </div>
+
+                        <div className="mt-3 pt-2.5 border-t border-slate-100/80">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                            Examples:
+                          </span>
+                          <ul className="space-y-0.5">
+                            {cond.examples.map((ex) => (
+                              <li
+                                key={ex}
+                                className="text-[11px] text-slate-600 leading-tight"
+                              >
+                                • {ex}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Choose the condition that best matches your product. This helps buyers know what to expect and improves trust.
+                </p>
               </div>
 
               {/* Description + Character Counter */}

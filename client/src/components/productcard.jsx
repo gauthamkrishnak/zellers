@@ -7,10 +7,10 @@ import { useAuth } from "../context/AuthContext";
 
 function ProductCard(props) {
   const navigate = useNavigate();
-  const { refreshWishlist } = useWishlist(props);
+  const { refreshWishlist } = useWishlist();
   const { getAuthHeaders, isAuthenticated } = useAuth();
 
-  const { id, title, price, image, location, listed } = props;
+  const { id, title, price, image, location, listed, is_brand_new } = props;
 
   const [isWishlisted, setIsWishlisted] = useState(props.is_wishlisted);
 
@@ -36,11 +36,14 @@ function ProductCard(props) {
       const response = await axios.put(
         `http://127.0.0.1:8000/products/${id}/wishlist`,
         {},
-        { headers: getAuthHeaders() },
+        {
+          headers: getAuthHeaders(),
+        },
       );
 
       setIsWishlisted(response.data.is_wishlisted);
       refreshWishlist();
+
       if (props.onWishlistToggle) {
         props.onWishlistToggle(id, response.data.is_wishlisted);
       }
@@ -55,6 +58,15 @@ function ProductCard(props) {
       className="group bg-white rounded-2xl border border-slate-200/50 overflow-hidden hover:shadow-xl hover:shadow-slate-100 hover:border-slate-300/40 transition-all duration-300 cursor-pointer flex flex-col h-full hover:-translate-y-1"
     >
       <div className="relative h-60 bg-slate-50 flex items-center justify-center p-6 overflow-hidden">
+        {/* Brand New Badge */}
+        {is_brand_new && (
+          <div className="absolute top-4 left-4 z-10">
+            <span className="bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wide px-3 py-1 rounded-full shadow-lg">
+              ✨ Brand New
+            </span>
+          </div>
+        )}
+
         <img
           src={`http://127.0.0.1:8000/uploads/${image}`}
           alt={title}
@@ -63,7 +75,7 @@ function ProductCard(props) {
 
         <button
           onClick={handleWishlistClick}
-          className="absolute top-4.5 right-4.5 bg-white/90 hover:bg-white p-2.5 rounded-full shadow-md backdrop-blur-xs cursor-pointer active:scale-90 transition-all duration-200"
+          className="absolute top-4 right-4 bg-white/90 hover:bg-white p-2.5 rounded-full shadow-md backdrop-blur-xs cursor-pointer active:scale-90 transition-all duration-200"
         >
           <Heart
             size={18}
