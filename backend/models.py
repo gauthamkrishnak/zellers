@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, UniqueConstraint
 from database import Base
 
@@ -12,6 +13,8 @@ class Product(Base):
     listed = Column(String)
     image = Column(String)
     desc = Column(String)
+    status = Column(String, default="available")
+
 
 class User(Base):
     __tablename__ = "users"
@@ -43,3 +46,24 @@ class Cart(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "product_id", name="uq_cart_user_product"),
     )
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    total_amount = Column(Integer, nullable=False)
+    status = Column(String, default="SUCCESS")
+    razorpay_order_id = Column(String, nullable=True, index=True)
+    razorpay_payment_id = Column(String, nullable=True, index=True)
+    razorpay_signature = Column(String, nullable=True)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    price = Column(Integer, nullable=False)
+    title = Column(String, nullable=True)

@@ -9,13 +9,14 @@ export function WishlistProvider({ children }) {
   const { getAuthHeaders, isAuthenticated } = useAuth();
 
   const refreshWishlist = useCallback(async () => {
-    if (!isAuthenticated) {
+    const headers = getAuthHeaders();
+    if (!isAuthenticated || !headers.Authorization) {
       setWishlistCount(0);
       return;
     }
     try {
       const response = await axios.get("http://127.0.0.1:8000/wishlist/", {
-        headers: getAuthHeaders(),
+        headers,
       });
       setWishlistCount(response.data.length);
     } catch (error) {

@@ -34,9 +34,7 @@ function Navbar({ searchTerm, setSearchTerm }) {
         <p className="text-sm md:text-base font-bold text-slate-800 truncate">
           {displayName}
         </p>
-        <p className="text-xs text-slate-500 truncate mt-0.5">
-          {displayEmail}
-        </p>
+        <p className="text-xs text-slate-500 truncate mt-0.5">{displayEmail}</p>
       </div>
 
       <div className="py-1">
@@ -114,7 +112,10 @@ function Navbar({ searchTerm, setSearchTerm }) {
                   onClick={() => navigate("/wishlist")}
                   className="relative p-2 text-slate-600 hover:text-rose-500 hover:bg-slate-100 rounded-full transition-all duration-200"
                 >
-                  <Heart size={20} className={"fill-rose-500 text-rose-500"} />
+                  <Heart
+                    size={20}
+                    className={"fill-rose-500 text-rose-500 cursor-pointer"}
+                  />
 
                   {wishlistCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-md">
@@ -125,7 +126,7 @@ function Navbar({ searchTerm, setSearchTerm }) {
 
                 <button
                   onClick={() => setIsCartOpen(true)}
-                  className="relative p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-all duration-200"
+                  className="relative p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-all duration-200 cursor-pointer"
                 >
                   <ShoppingCart size={20} />
                   {cartItems.length > 0 && (
@@ -137,7 +138,7 @@ function Navbar({ searchTerm, setSearchTerm }) {
 
                 <button
                   onClick={() => setIsNotificationsOpen(true)}
-                  className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-all duration-200"
+                  className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-all duration-200 cursor-pointer"
                 >
                   <Bell size={20} />
                 </button>
@@ -215,11 +216,11 @@ function Navbar({ searchTerm, setSearchTerm }) {
               >
                 <ShoppingCart size={22} />
                 {cartItems.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-indigo-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-md">
+                  <span className="absolute -top-1 -right-1 bg-indigo-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-md ">
                     {cartItems.length}
                   </span>
                 )}
-                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition duration-200 whitespace-nowrap shadow-md pointer-events-none">
+                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition duration-200 whitespace-nowrap shadow-md pointer-events-none ">
                   Cart
                 </span>
               </button>

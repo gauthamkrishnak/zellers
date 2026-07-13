@@ -50,8 +50,9 @@ export function AuthProvider({ children }) {
 
   // Helper to get auth headers for API calls
   const getAuthHeaders = () => {
-    if (!token) return {};
-    return { Authorization: `Bearer ${token}` };
+    const activeToken = localStorage.getItem("access_token") || token;
+    if (!activeToken) return {};
+    return { Authorization: `Bearer ${activeToken}` };
   };
 
   return (

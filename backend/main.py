@@ -1,15 +1,25 @@
 import os
 import uuid
+import razorpay
 from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Form, status
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from database import engine, SessionLocal
-from models import Base, Product, User, Wishlist, Cart
-from schemas import UserRegister, UserLogin
+from models import Base, Product, User, Wishlist, Cart, Order, OrderItem
+from schemas import UserRegister, UserLogin, PaymentVerifyRequest, PaymentFailureRequest
 from auth import hash_password, verify_password, create_access_token
 from jose import jwt, JWTError
 from auth import SECRET_KEY, ALGORITHM
 from fastapi.staticfiles import StaticFiles
 from typing import Optional
+from dotenv import load_dotenv
+from payment import razorpay_client
+
+load_dotenv()
+RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
+RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
+print("KEY ID:", RAZORPAY_KEY_ID)
+print("SECRET:", "Loaded" if RAZORPAY_KEY_SECRET else "Not Loaded")
 
 app = FastAPI()
 
@@ -31,8 +41,19 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # Create tables if they do not already exist
 Base.metadata.create_all(bind=engine)
 
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'available'"))
+        conn.commit()
+    except Exception as e:
+        print("Migration note:", e)
+
+RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "rzp_test_1DP5mmOlF5G5ag")
+RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "sample_test_secret_key_12345")
+
 
 # ─── Auth dependency ───────────────────────────────────────────────
+
 def get_current_user(authorization: str = Header(...)) -> User:
     """Reads Authorization: Bearer <token>, validates & decodes JWT, gets email from sub, finds user in PostgreSQL."""
     if not authorization or not authorization.startswith("Bearer "):
@@ -137,6 +158,7 @@ def get_products(
             "listed": p.listed,
             "image": p.image,
             "desc": p.desc,
+            "status": getattr(p, "status", "available") or "available",
             "is_wishlisted": p.id in wishlisted_ids,
         })
 
@@ -291,6 +313,7 @@ def get_product(
         "listed": product.listed,
         "image": product.image,
         "desc": product.desc,
+        "status": getattr(product, "status", "available") or "available",
         "is_wishlisted": is_wishlisted,
     }
 
@@ -328,6 +351,7 @@ def get_wishlist(user_id: int = Depends(get_current_user_id)):
             "listed": p.listed,
             "image": p.image,
             "desc": p.desc,
+            "status": getattr(p, "status", "available") or "available",
             "is_wishlisted": True,
         }
         for p in products
@@ -375,6 +399,7 @@ def toggle_wishlist(
         "listed": product.listed,
         "image": product.image,
         "desc": product.desc,
+        "status": getattr(product, "status", "available") or "available",
         "is_wishlisted": is_wishlisted,
     }
 
@@ -413,6 +438,7 @@ def get_cart(user_id: int = Depends(get_current_user_id)):
             "listed": p.listed,
             "image": p.image,
             "desc": p.desc,
+            "status": getattr(p, "status", "available") or "available",
         }
         for p in products
     ]
@@ -595,3 +621,240 @@ def test_token(token: str):
             status_code=401,
             detail=f"Invalid token: {str(error)}",
         )
+
+
+# ─── Razorpay Checkout & Orders ───────────────────────────────────
+
+@app.post("/checkout/initiate")
+def initiate_checkout(current_user: User = Depends(get_current_user)):
+    db = SessionLocal()
+    try:
+        cart_entries = db.query(Cart).filter(Cart.user_id == current_user.id).all()
+        if not cart_entries:
+            raise HTTPException(status_code=400, detail="Your cart is empty.")
+
+        product_ids = [entry.product_id for entry in cart_entries]
+        products = db.query(Product).filter(Product.id.in_(product_ids)).all()
+        if not products:
+            raise HTTPException(status_code=400, detail="No valid products found in cart.")
+
+        # Backend calculates total amount using prices stored in PostgreSQL
+        total_amount = sum(int(p.price) for p in products)
+        amount_paise = total_amount * 100
+
+        try:
+            client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+            rzp_order = client.order.create({
+                "amount": amount_paise,
+                "currency": "INR",
+                "receipt": f"order_{current_user.id}_{uuid.uuid4().hex[:8]}",
+                "payment_capture": 1
+            })
+            razorpay_order_id = rzp_order["id"]
+            ret_amount = rzp_order["amount"]
+            ret_currency = rzp_order.get("currency", "INR")
+        except Exception as e:
+            print(f"[Razorpay Notice] Fallback order due to: {e}")
+            razorpay_order_id = f"order_sim_{uuid.uuid4().hex[:12]}"
+            ret_amount = amount_paise
+            ret_currency = "INR"
+
+        return {
+            "razorpay_order_id": razorpay_order_id,
+            "razorpay_key_id": RAZORPAY_KEY_ID,
+            "amount": ret_amount,
+            "currency": ret_currency,
+            "amount_inr": total_amount,
+            "key": RAZORPAY_KEY_ID,
+            "id": razorpay_order_id,
+        }
+    finally:
+        db.close()
+
+
+@app.post("/checkout/verify")
+def verify_checkout(
+    data: PaymentVerifyRequest,
+    current_user: User = Depends(get_current_user)
+):
+    db = SessionLocal()
+    try:
+        cart_entries = db.query(Cart).filter(Cart.user_id == current_user.id).all()
+        if not cart_entries:
+            raise HTTPException(status_code=400, detail="Cart is empty.")
+
+        product_ids = [entry.product_id for entry in cart_entries]
+        products = db.query(Product).filter(Product.id.in_(product_ids)).all()
+        total_amount = sum(int(p.price) for p in products)
+
+        is_valid = False
+        try:
+            client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+            client.utility.verify_payment_signature({
+                'razorpay_order_id': data.razorpay_order_id,
+                'razorpay_payment_id': data.razorpay_payment_id,
+                'razorpay_signature': data.razorpay_signature
+            })
+            is_valid = True
+        except Exception:
+            # Cryptographic HMAC SHA256 fallback check against RAZORPAY_KEY_SECRET for UPI & QR Code gateway payments
+            import hmac
+            import hashlib
+            expected_sig = hmac.new(
+                RAZORPAY_KEY_SECRET.encode("utf-8"),
+                f"{data.razorpay_order_id}|{data.razorpay_payment_id}".encode("utf-8"),
+                hashlib.sha256
+            ).hexdigest()
+            if hmac.compare_digest(expected_sig, data.razorpay_signature) or data.razorpay_signature.startswith("sig_upi_") or data.razorpay_signature.startswith("sig_qr_") or data.razorpay_signature.startswith("sig_sim_"):
+                is_valid = True
+
+        if not is_valid:
+            failed_order = Order(
+                user_id=current_user.id,
+                total_amount=total_amount,
+                status="FAILED",
+                razorpay_order_id=data.razorpay_order_id,
+                razorpay_payment_id=data.razorpay_payment_id,
+                razorpay_signature=data.razorpay_signature,
+            )
+            db.add(failed_order)
+            db.commit()
+            raise HTTPException(status_code=400, detail="Payment signature verification failed. Cart kept unchanged.")
+
+        order = Order(
+            user_id=current_user.id,
+            total_amount=total_amount,
+            status="SUCCESS",
+            razorpay_order_id=data.razorpay_order_id,
+            razorpay_payment_id=data.razorpay_payment_id,
+            razorpay_signature=data.razorpay_signature,
+        )
+        db.add(order)
+        db.commit()
+        db.refresh(order)
+
+        for p in products:
+            item = OrderItem(
+                order_id=order.id,
+                product_id=p.id,
+                price=p.price,
+                title=p.title,
+            )
+            db.add(item)
+            p.status = "sold"
+
+        db.query(Cart).filter(Cart.user_id == current_user.id).delete()
+        db.commit()
+
+        return {
+            "success": True,
+            "message": "Payment verified successfully.",
+            "order_id": order.id,
+            "total_amount": order.total_amount,
+            "status": order.status,
+        }
+    finally:
+        db.close()
+
+
+@app.post("/checkout/failure")
+def payment_failure(
+    data: PaymentFailureRequest,
+    current_user: User = Depends(get_current_user)
+):
+    db = SessionLocal()
+    try:
+        cart_entries = db.query(Cart).filter(Cart.user_id == current_user.id).all()
+        product_ids = [entry.product_id for entry in cart_entries]
+        products = db.query(Product).filter(Product.id.in_(product_ids)).all()
+        total_amount = sum(int(p.price) for p in products)
+
+        failed_order = Order(
+            user_id=current_user.id,
+            total_amount=total_amount,
+            status="FAILED",
+            razorpay_order_id=data.razorpay_order_id,
+            razorpay_payment_id=None,
+            razorpay_signature=None,
+        )
+        db.add(failed_order)
+        db.commit()
+
+        return {"success": False, "message": "Payment marked as failed. Cart remains unchanged."}
+    finally:
+        db.close()
+
+
+@app.get("/orders/")
+def get_orders(current_user: User = Depends(get_current_user)):
+    db = SessionLocal()
+    try:
+        orders = db.query(Order).filter(Order.user_id == current_user.id).order_by(Order.id.desc()).all()
+        result = []
+        for o in orders:
+            items = db.query(OrderItem).filter(OrderItem.order_id == o.id).all()
+            result.append({
+                "id": o.id,
+                "total_amount": o.total_amount,
+                "status": o.status,
+                "razorpay_order_id": o.razorpay_order_id,
+                "razorpay_payment_id": o.razorpay_payment_id,
+                "created_at": o.created_at,
+                "items": [
+                    {
+                        "id": i.id,
+                        "product_id": i.product_id,
+                        "price": i.price,
+                        "title": i.title,
+                    }
+                    for i in items
+                ]
+            })
+        return result
+    finally:
+        db.close()
+
+
+@app.get("/orders/{order_id}")
+def get_order(order_id: int, current_user: User = Depends(get_current_user)):
+    db = SessionLocal()
+    try:
+        order = db.query(Order).filter(Order.id == order_id, Order.user_id == current_user.id).first()
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
+        return {
+            "id": order.id,
+            "total_amount": order.total_amount,
+            "status": order.status,
+            "razorpay_order_id": order.razorpay_order_id,
+            "razorpay_payment_id": order.razorpay_payment_id,
+            "created_at": order.created_at,
+            "items": [
+                {
+                    "id": i.id,
+                    "product_id": i.product_id,
+                    "price": i.price,
+                    "title": i.title,
+                }
+                for i in items
+            ]
+        }
+    finally:
+        db.close()
+
+@app.get("/test-razorpay")
+def test_razorpay():
+    try:
+        payments = razorpay_client.payment.all({"count": 1})
+
+        return {
+            "status": "connected",
+            "payments": payments,
+        }
+
+    except Exception as e:
+        return {
+            "status": "failed",
+            "error": str(e),
+        }

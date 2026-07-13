@@ -10,6 +10,9 @@ import {
   ArrowLeft,
   CheckCircle2,
   Info,
+  Package,
+  Receipt,
+  ShoppingBag,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -17,11 +20,12 @@ export default function Account() {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const [profile, setProfile] = useState(null);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchProfileAndOrders = async () => {
       const token = localStorage.getItem("access_token");
       if (!token) {
         navigate("/login");
@@ -30,12 +34,18 @@ export default function Account() {
 
       try {
         setLoading(true);
-        const response = await axios.get("http://127.0.0.1:8000/me", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const [response, ordersRes] = await Promise.all([
+          axios.get("http://127.0.0.1:8000/me", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axios
+            .get("http://127.0.0.1:8000/orders/", {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+            .catch(() => ({ data: [] })),
+        ]);
         setProfile(response.data);
+        setOrders(ordersRes.data || []);
       } catch (err) {
         if (err.response && err.response.status === 401) {
           logout();
@@ -43,12 +53,13 @@ export default function Account() {
         } else {
           setError("Failed to load profile details.");
         }
+
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProfile();
+    fetchProfileAndOrders();
   }, [navigate, logout]);
 
   if (loading) {
@@ -191,6 +202,68 @@ export default function Account() {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Order History */}
+        <div className="bg-slate-800/60 border border-slate-700/60 rounded-3xl p-6 sm:p-8 mb-8 backdrop-blur-md">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-extrabold text-white flex items-center gap-2.5">
+              <Receipt className="text-indigo-400" size={24} />
+              Your Order History
+            </h2>
+            <span className="text-xs font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 px-3 py-1 rounded-full">
+              {orders.length} {orders.length === 1 ? "Order" : "Orders"}
+            </span>
+          </div>
+
+          {orders.length === 0 ? (
+            <div className="text-center py-8 text-slate-400 border border-dashed border-slate-700 rounded-2xl">
+              <ShoppingBag className="mx-auto mb-2 text-slate-500" size={32} />
+              <p className="text-sm font-semibold">No past orders found.</p>
+              <p className="text-xs text-slate-500 mt-1">
+                Your completed Razorpay checkouts will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {orders.map((o) => (
+                <div
+                  key={o.id}
+                  className="bg-slate-900/80 border border-slate-700/80 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-extrabold text-white">
+                        Order #{o.id}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                        {o.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      Razorpay ID: <code className="text-slate-300">{o.razorpay_order_id}</code>
+                    </p>
+                    <div className="mt-2 space-y-1">
+                      {o.items?.map((it) => (
+                        <div key={it.id} className="text-xs text-slate-300 flex items-center gap-2">
+                          <Package size={13} className="text-indigo-400" />
+                          <span>{it.title}</span>
+                          <span className="text-slate-500">— ₹{it.price.toLocaleString("en-IN")}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 border-slate-800 pt-3 sm:pt-0">
+                    <span className="text-xs text-slate-400">Total Amount</span>
+                    <span className="text-lg font-black text-indigo-400">
+                      ₹{o.total_amount.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Actions */}
