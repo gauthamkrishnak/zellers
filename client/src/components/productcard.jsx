@@ -11,6 +11,7 @@ function ProductCard(props) {
   const { getAuthHeaders, isAuthenticated } = useAuth();
 
   const { id, title, price, image, location, listed, is_brand_new } = props;
+  const isSold = Boolean(props.is_sold || props.status === "sold");
 
   const [isWishlisted, setIsWishlisted] = useState(props.is_wishlisted);
 
@@ -19,12 +20,14 @@ function ProductCard(props) {
   }, [props.is_wishlisted]);
 
   const handleCardClick = () => {
+    if (isSold) return;
     const formattedTitle = title.replaceAll(" ", "-").toLowerCase();
     navigate(`/product/${id}/${formattedTitle}`);
   };
 
   const handleWishlistClick = async (e) => {
     e.stopPropagation();
+    if (isSold) return;
 
     if (!isAuthenticated) {
       alert("Please login to save items to your wishlist.");
@@ -55,11 +58,15 @@ function ProductCard(props) {
   return (
     <div
       onClick={handleCardClick}
-      className="group bg-white rounded-2xl border border-slate-200/50 overflow-hidden hover:shadow-xl hover:shadow-slate-100 hover:border-slate-300/40 transition-all duration-300 cursor-pointer flex flex-col h-full hover:-translate-y-1"
+      className={
+        isSold
+          ? "bg-white rounded-2xl border border-slate-200/70 overflow-hidden transition-all duration-300 cursor-not-allowed flex flex-col h-full"
+          : "group bg-white rounded-2xl border border-slate-200/50 overflow-hidden hover:shadow-xl hover:shadow-slate-100 hover:border-slate-300/40 transition-all duration-300 cursor-pointer flex flex-col h-full hover:-translate-y-1"
+      }
     >
       <div className="relative h-60 bg-slate-50 flex items-center justify-center p-6 overflow-hidden">
-        {/* Brand New Badge */}
-        {is_brand_new && (
+        {/* Brand New Badge (only when not sold) */}
+        {!isSold && is_brand_new && (
           <div className="absolute top-4 left-4 z-10">
             <span className="bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wide px-3 py-1 rounded-full shadow-lg">
               ✨ Brand New
@@ -67,15 +74,33 @@ function ProductCard(props) {
           </div>
         )}
 
+        {/* Sold Out Dark Overlay & Centered Badge */}
+        {isSold && (
+          <div className="absolute inset-0 z-20 bg-slate-950/50 flex items-center justify-center">
+            <span className="bg-rose-600 text-white font-black text-xs uppercase tracking-widest px-4 py-2 rounded-xl shadow-xl border border-rose-400/40">
+              SOLD OUT
+            </span>
+          </div>
+        )}
+
         <img
           src={`http://127.0.0.1:8000/uploads/${image}`}
           alt={title}
-          className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500"
+          className={`max-w-full max-h-full object-contain ${
+            isSold
+              ? "grayscale opacity-60"
+              : "group-hover:scale-105 transition-transform duration-500"
+          }`}
         />
 
         <button
           onClick={handleWishlistClick}
-          className="absolute top-4 right-4 bg-white/90 hover:bg-white p-2.5 rounded-full shadow-md backdrop-blur-xs cursor-pointer active:scale-90 transition-all duration-200"
+          disabled={isSold}
+          className={`absolute top-4 right-4 bg-white/90 p-2.5 rounded-full shadow-md backdrop-blur-xs transition-all duration-200 z-30 ${
+            isSold
+              ? "cursor-not-allowed opacity-50"
+              : "hover:bg-white cursor-pointer active:scale-90"
+          }`}
         >
           <Heart
             size={18}
@@ -91,7 +116,13 @@ function ProductCard(props) {
 
       <div className="p-5 flex flex-col flex-grow justify-between gap-4">
         <div>
-          <h3 className="font-bold text-slate-800 text-base leading-snug group-hover:text-indigo-600 transition-colors duration-200 line-clamp-2">
+          <h3
+            className={`font-bold text-base leading-snug line-clamp-2 ${
+              isSold
+                ? "text-slate-400 line-through"
+                : "text-slate-800 group-hover:text-indigo-600 transition-colors duration-200"
+            }`}
+          >
             {title}
           </h3>
 
@@ -104,12 +135,16 @@ function ProductCard(props) {
         </div>
 
         <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-auto">
-          <p className="text-indigo-600 font-extrabold text-lg">
+          <p
+            className={`font-extrabold text-lg ${
+              isSold ? "text-slate-400" : "text-indigo-600"
+            }`}
+          >
             ₹{price.toLocaleString("en-IN")}
           </p>
 
           <span className="text-slate-400 text-[11px] font-medium bg-slate-100 px-2.5 py-1 rounded-full">
-            {listed}
+            {isSold ? "Sold" : listed}
           </span>
         </div>
       </div>

@@ -14,6 +14,9 @@ class Product(Base):
     image = Column(String)
     desc = Column(String)
     status = Column(String, default="available")
+    is_sold = Column(Boolean, default=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    condition = Column(String, nullable=True, default="Excellent")
 
 
 class User(Base):

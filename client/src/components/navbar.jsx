@@ -7,6 +7,7 @@ import {
   X,
   ShoppingCart,
   Settings,
+  Package,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useWishlist } from "../context/WishlistContext";
@@ -47,6 +48,28 @@ function Navbar({ searchTerm, setSearchTerm }) {
         >
           <Settings size={17} />
           <span>Account Details</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setIsProfileOpen(false);
+            navigate("/my-listings");
+          }}
+          className="w-full flex items-center gap-3 px-5 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors cursor-pointer"
+        >
+          <Package size={17} />
+          <span>My Listings</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setIsProfileOpen(false);
+            navigate("/wishlist");
+          }}
+          className="w-full flex items-center gap-3 px-5 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors cursor-pointer"
+        >
+          <Heart size={17} />
+          <span>Wishlist</span>
         </button>
       </div>
 

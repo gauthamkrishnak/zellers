@@ -7,6 +7,8 @@ import Account from "./pages/Account";
 import Cart from "./pages/Cart";
 import OrderSuccess from "./pages/OrderSuccess";
 import PaymentGateway from "./pages/PaymentGateway";
+import MyListings from "./pages/MyListings";
+import EditProduct from "./pages/EditProduct";
 import ScrollToTop from "./components/scrolltotop";
 import Layout from "./pages/Layout";
 import Login from "./pages/Login";
@@ -29,6 +31,8 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/product/:id/:title" element={<ProductDetails />} />
             <Route path="/wishlist" element={<Wishlist />} />
+            <Route path="/my-listings" element={<MyListings />} />
+            <Route path="/edit-product/:id" element={<EditProduct />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/order-success" element={<OrderSuccess />} />
           </Route>

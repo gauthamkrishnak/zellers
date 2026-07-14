@@ -44,6 +44,11 @@ Base.metadata.create_all(bind=engine)
 with engine.connect() as conn:
     try:
         conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'available'"))
+        conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS is_sold BOOLEAN DEFAULT FALSE"))
+        conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS user_id INTEGER"))
+        conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS condition VARCHAR DEFAULT 'Excellent'"))
+        conn.execute(text("UPDATE products SET is_sold = TRUE WHERE status = 'sold' AND (is_sold IS NULL OR is_sold = FALSE)"))
+        conn.execute(text("UPDATE products SET user_id = 1 WHERE user_id IS NULL"))
         conn.commit()
     except Exception as e:
         print("Migration note:", e)
@@ -110,6 +115,47 @@ def home():
     return {"message": "Hello World"}
 
 
+def serialize_product(p: Product, is_wishlisted: Optional[bool] = None) -> dict:
+    is_sold = bool(getattr(p, "is_sold", False)) or (getattr(p, "status", "") == "sold")
+    cond = getattr(p, "condition", None)
+    raw_desc = p.desc or ""
+    clean_desc = raw_desc
+    if not cond and "[Condition:" in raw_desc:
+        try:
+            cond = raw_desc.split("[Condition:")[1].split("]")[0].strip()
+        except Exception:
+            cond = "Excellent"
+    if raw_desc.startswith("[Condition:"):
+        parts = raw_desc.split("]", 1)
+        if len(parts) == 2:
+            clean_desc = parts[1].lstrip("\r\n")
+    if not cond:
+        cond = "Excellent"
+    is_brand_new = (cond == "Brand New")
+
+    data = {
+        "id": p.id,
+        "title": p.title,
+        "price": p.price,
+        "type": p.type,
+        "category": p.type,
+        "location": p.location,
+        "listed": p.listed,
+        "image": p.image,
+        "desc": clean_desc,
+        "raw_desc": raw_desc,
+        "condition": cond,
+        "is_brand_new": is_brand_new,
+        "status": "sold" if is_sold else (getattr(p, "status", "available") or "available"),
+        "is_sold": is_sold,
+        "user_id": getattr(p, "user_id", None),
+        "seller_id": getattr(p, "user_id", None),
+    }
+    if is_wishlisted is not None:
+        data["is_wishlisted"] = is_wishlisted
+    return data
+
+
 # ─── Products ──────────────────────────────────────────────────────
 
 @app.get("/products/")
@@ -146,21 +192,8 @@ def get_products(
         except (JWTError, ValueError, TypeError):
             pass
 
-    # Add is_wishlisted field to each product
-    result = []
-    for p in products:
-        result.append({
-            "id": p.id,
-            "title": p.title,
-            "price": p.price,
-            "type": p.type,
-            "location": p.location,
-            "listed": p.listed,
-            "image": p.image,
-            "desc": p.desc,
-            "status": getattr(p, "status", "available") or "available",
-            "is_wishlisted": p.id in wishlisted_ids,
-        })
+    # Add is_wishlisted and is_sold field to each product
+    result = [serialize_product(p, is_wishlisted=(p.id in wishlisted_ids)) for p in products]
 
     db.close()
     return result
@@ -178,6 +211,7 @@ async def create_product(
     type: str = Form(...),
     location: str = Form(...),
     desc: str = Form(...),
+    condition: str = Form("Excellent"),
     image: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
@@ -241,6 +275,8 @@ async def create_product(
             listed="Just now",
             image=unique_filename,
             desc=desc.strip(),
+            condition=condition.strip() if condition else "Excellent",
+            user_id=current_user.id,
         )
         db.add(new_product)
         db.commit()
@@ -259,17 +295,7 @@ async def create_product(
     finally:
         db.close()
 
-    return {
-        "id": new_product.id,
-        "title": new_product.title,
-        "price": new_product.price,
-        "type": new_product.type,
-        "location": new_product.location,
-        "listed": new_product.listed,
-        "image": new_product.image,
-        "desc": new_product.desc,
-        "is_wishlisted": False,
-    }
+    return serialize_product(new_product, is_wishlisted=False)
 
 
 @app.get("/products/{product_id}")
@@ -304,21 +330,128 @@ def get_product(
         except (JWTError, ValueError, TypeError):
             pass
 
-    result = {
-        "id": product.id,
-        "title": product.title,
-        "price": product.price,
-        "type": product.type,
-        "location": product.location,
-        "listed": product.listed,
-        "image": product.image,
-        "desc": product.desc,
-        "status": getattr(product, "status", "available") or "available",
-        "is_wishlisted": is_wishlisted,
-    }
+    result = serialize_product(product, is_wishlisted=is_wishlisted)
 
     db.close()
     return result
+
+
+@app.get("/my-listings")
+def get_my_listings(current_user: User = Depends(get_current_user)):
+    db = SessionLocal()
+    try:
+        products = (
+            db.query(Product)
+            .filter(Product.user_id == current_user.id)
+            .order_by(Product.id.desc())
+            .all()
+        )
+        return [serialize_product(p, is_wishlisted=False) for p in products]
+    finally:
+        db.close()
+
+
+@app.put("/products/{product_id}")
+async def update_product(
+    product_id: int,
+    title: Optional[str] = Form(None),
+    price: Optional[int] = Form(None),
+    type: Optional[str] = Form(None),
+    location: Optional[str] = Form(None),
+    desc: Optional[str] = Form(None),
+    condition: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
+    current_user: User = Depends(get_current_user),
+):
+    db = SessionLocal()
+    try:
+        product = db.query(Product).filter(Product.id == product_id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        if product.user_id != current_user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to edit this listing.",
+            )
+        if product.is_sold or product.status == "sold":
+            raise HTTPException(
+                status_code=400,
+                detail="Sold products cannot be modified.",
+            )
+
+        if title is not None and title.strip():
+            product.title = title.strip()
+        if price is not None:
+            if price < 0:
+                raise HTTPException(status_code=400, detail="Price cannot be negative.")
+            product.price = price
+        if type is not None and type.strip():
+            product.type = type.strip()
+        if location is not None and location.strip():
+            product.location = location.strip()
+        if condition is not None and condition.strip():
+            product.condition = condition.strip()
+        if desc is not None and desc.strip():
+            product.desc = desc.strip()
+
+        if image is not None and image.filename:
+            filename = image.filename
+            ext = os.path.splitext(filename)[1].lower()
+            if ext not in ALLOWED_IMAGE_EXTENSIONS and image.content_type not in ALLOWED_IMAGE_MIME_TYPES:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid image format.",
+                )
+            if ext not in ALLOWED_IMAGE_EXTENSIONS:
+                ext_map = {
+                    "image/jpeg": ".jpg",
+                    "image/jpg": ".jpg",
+                    "image/png": ".png",
+                    "image/webp": ".webp",
+                }
+                ext = ext_map.get(image.content_type, ".jpg")
+
+            contents = await image.read()
+            if len(contents) > MAX_IMAGE_SIZE_BYTES:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Image size exceeds 5 MB limit.",
+                )
+            unique_filename = f"{uuid.uuid4().hex}{ext}"
+            upload_dir = "uploads"
+            os.makedirs(upload_dir, exist_ok=True)
+            file_path = os.path.join(upload_dir, unique_filename)
+            with open(file_path, "wb") as f:
+                f.write(contents)
+            product.image = unique_filename
+
+        db.commit()
+        db.refresh(product)
+        return serialize_product(product)
+    finally:
+        db.close()
+
+
+@app.delete("/products/{product_id}")
+def delete_product(product_id: int, current_user: User = Depends(get_current_user)):
+    db = SessionLocal()
+    try:
+        product = db.query(Product).filter(Product.id == product_id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        if product.user_id != current_user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to delete this listing.",
+            )
+
+        db.query(Wishlist).filter(Wishlist.product_id == product_id).delete()
+        db.query(Cart).filter(Cart.product_id == product_id).delete()
+        db.delete(product)
+        db.commit()
+        return {"success": True, "message": "Listing deleted successfully."}
+    finally:
+        db.close()
 
 
 # ─── Wishlist (per-user) ──────────────────────────────────────────
@@ -341,21 +474,7 @@ def get_wishlist(user_id: int = Depends(get_current_user_id)):
         .all()
     )
 
-    result = [
-        {
-            "id": p.id,
-            "title": p.title,
-            "price": p.price,
-            "type": p.type,
-            "location": p.location,
-            "listed": p.listed,
-            "image": p.image,
-            "desc": p.desc,
-            "status": getattr(p, "status", "available") or "available",
-            "is_wishlisted": True,
-        }
-        for p in products
-    ]
+    result = [serialize_product(p, is_wishlisted=True) for p in products]
 
     db.close()
     return result
@@ -428,20 +547,7 @@ def get_cart(user_id: int = Depends(get_current_user_id)):
         .all()
     )
 
-    result = [
-        {
-            "id": p.id,
-            "title": p.title,
-            "price": p.price,
-            "type": p.type,
-            "location": p.location,
-            "listed": p.listed,
-            "image": p.image,
-            "desc": p.desc,
-            "status": getattr(p, "status", "available") or "available",
-        }
-        for p in products
-    ]
+    result = [serialize_product(p) for p in products]
 
     db.close()
     return result
@@ -742,6 +848,7 @@ def verify_checkout(
             )
             db.add(item)
             p.status = "sold"
+            p.is_sold = True
 
         db.query(Cart).filter(Cart.user_id == current_user.id).delete()
         db.commit()

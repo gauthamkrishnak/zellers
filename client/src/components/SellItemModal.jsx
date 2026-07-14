@@ -12,7 +12,7 @@ import {
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 
-const CATEGORIES = [
+export const CATEGORIES = [
   "Mobiles",
   "Electronics",
   "Vehicles",
@@ -24,7 +24,7 @@ const CATEGORIES = [
   "Others",
 ];
 
-const CONDITIONS = [
+export const CONDITIONS = [
   {
     id: "Brand New",
     title: "Brand New",

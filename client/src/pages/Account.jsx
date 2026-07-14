@@ -267,7 +267,14 @@ export default function Account() {
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <button
+            onClick={() => navigate("/my-listings")}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl font-bold text-sm transition-all cursor-pointer shadow-lg shadow-indigo-600/20"
+          >
+            <Package size={16} /> Manage My Listings
+          </button>
+
           <button
             onClick={() => {
               logout();

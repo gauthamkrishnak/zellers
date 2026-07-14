@@ -92,95 +92,125 @@ function ProductDetails() {
 
   const isWishlisted = product.is_wishlisted;
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fadeIn">
-      <button
-        onClick={() => navigate(-1)}
-        className="group flex items-center gap-2 text-slate-600 hover:text-indigo-600 font-semibold mb-6 transition-colors duration-200 cursor-pointer border-none bg-transparent"
-      >
-        <ArrowLeft
-          size={18}
-          className="group-hover:-translate-x-1 transition-transform duration-200"
-        />
-        <span>Back to listings</span>
-      </button>
+          const isSold = Boolean(product?.is_sold || product?.status === "sold");
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-7 flex flex-col gap-6">
-          <div className="bg-white rounded-3xl border border-slate-200/50 p-6 md:p-10 shadow-sm flex items-center justify-center min-h-[350px] md:min-h-[480px]">
-            <img
-              src={`http://127.0.0.1:8000/uploads/${product.image}`}
-              alt={product.title}
-              className="max-h-[320px] md:max-h-[440px] w-auto object-contain hover:scale-[1.02] transition-transform duration-300"
-            />
-          </div>
-
-          <div className="bg-white rounded-3xl border border-slate-200/50 p-6 md:p-8 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-800 mb-4">
-              Description
-            </h2>
-            <p className="text-slate-600 leading-relaxed text-sm md:text-base whitespace-pre-line">
-              {product.desc}
-            </p>
-          </div>
-        </div>
-
-        <div className="lg:col-span-5 flex flex-col gap-6">
-          <div className="bg-white rounded-3xl border border-slate-200/50 p-6 md:p-8 shadow-sm flex flex-col gap-4">
-            <div>
-              <span className="text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full uppercase tracking-wider">
-                {product.type}
-              </span>
-
-              <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 tracking-tight mt-4">
-                {product.title}
-              </h1>
-            </div>
-
-            <span className="text-3xl font-black text-indigo-600">
-              ₹{product.price.toLocaleString("en-IN")}
-            </span>
-
-            <div className="flex flex-col gap-2 border-t border-b border-slate-100 py-4 text-sm text-slate-500 font-medium">
-              <div className="flex items-center gap-2">
-                <MapPin size={16} className="text-slate-400" />
-                <span>{product.location}</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Calendar size={16} className="text-slate-400" />
-                <span>Listed {product.listed}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 mt-2">
-              {cartItems.some((item) => item.id === product.id) ? (
-                <button
-                  onClick={() => setIsCartOpen(true)}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-emerald-600/10 hover:shadow-emerald-600/20 active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  Go to Cart
-                </button>
-              ) : (
-                <button
-                  onClick={() => addToCart(product)}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  Add to Cart
-                </button>
-              )}
-
+          return (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fadeIn">
               <button
-                onClick={handleWishlist}
-                className="bg-slate-50 hover:bg-slate-100 border border-slate-200/80 p-3.5 rounded-2xl transition-all duration-200 active:scale-90 cursor-pointer"
+                onClick={() => navigate(-1)}
+                className="group flex items-center gap-2 text-slate-600 hover:text-indigo-600 font-semibold mb-6 transition-colors duration-200 cursor-pointer border-none bg-transparent"
               >
-                <Heart
-                  size={20}
-                  fill={isWishlisted ? "currentColor" : "none"}
-                  className={isWishlisted ? "text-rose-500" : "text-slate-600"}
+                <ArrowLeft
+                  size={18}
+                  className="group-hover:-translate-x-1 transition-transform duration-200"
                 />
+                <span>Back to listings</span>
               </button>
-            </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <div className="lg:col-span-7 flex flex-col gap-6">
+                  <div className="relative bg-white rounded-3xl border border-slate-200/50 p-6 md:p-10 shadow-sm flex items-center justify-center min-h-[350px] md:min-h-[480px] overflow-hidden">
+                    {isSold && (
+                      <div className="absolute inset-0 z-20 bg-slate-950/50 flex items-center justify-center">
+                        <span className="bg-rose-600 text-white font-black text-sm uppercase tracking-widest px-5 py-2.5 rounded-xl shadow-xl border border-rose-400/40">
+                          SOLD OUT
+                        </span>
+                      </div>
+                    )}
+                    <img
+                      src={`http://127.0.0.1:8000/uploads/${product.image}`}
+                      alt={product.title}
+                      className={`max-h-[320px] md:max-h-[440px] w-auto object-contain ${
+                        isSold
+                          ? "grayscale opacity-60"
+                          : "hover:scale-[1.02] transition-transform duration-300"
+                      }`}
+                    />
+                  </div>
+
+                  <div className="bg-white rounded-3xl border border-slate-200/50 p-6 md:p-8 shadow-sm">
+                    <h2 className="text-lg font-bold text-slate-800 mb-4">
+                      Description
+                    </h2>
+                    <p className="text-slate-600 leading-relaxed text-sm md:text-base whitespace-pre-line">
+                      {product.desc}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-5 flex flex-col gap-6">
+                  <div className="bg-white rounded-3xl border border-slate-200/50 p-6 md:p-8 shadow-sm flex flex-col gap-4">
+                    <div>
+                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full uppercase tracking-wider">
+                        {product.type}
+                      </span>
+
+                      <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 tracking-tight mt-4">
+                        {product.title}
+                      </h1>
+                    </div>
+
+                    <span className="text-3xl font-black text-indigo-600">
+                      ₹{product.price.toLocaleString("en-IN")}
+                    </span>
+
+                    <div className="flex flex-col gap-2 border-t border-b border-slate-100 py-4 text-sm text-slate-500 font-medium">
+                      <div className="flex items-center gap-2">
+                        <MapPin size={16} className="text-slate-400" />
+                        <span>{product.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar size={16} className="text-slate-400" />
+                        <span>Listed {product.listed}</span>
+                      </div>
+                    </div>
+
+                    {isSold && (
+                      <div className="bg-rose-50 border border-rose-200/80 rounded-2xl p-4 text-rose-800 text-sm font-semibold flex items-center gap-2">
+                        <span>This item has already been purchased.</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3 mt-2">
+                      {isSold ? (
+                        <button
+                          disabled
+                          className="flex-1 bg-slate-200 text-slate-500 font-bold py-3.5 px-6 rounded-2xl cursor-not-allowed border border-slate-300"
+                        >
+                          Sold Out
+                        </button>
+                      ) : cartItems.some((item) => item.id === product.id) ? (
+                        <button
+                          onClick={() => setIsCartOpen(true)}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-emerald-600/10 hover:shadow-emerald-600/20 active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          Go to Cart
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => addToCart(product)}
+                          className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          Add to Cart
+                        </button>
+                      )}
+
+                      <button
+                        onClick={handleWishlist}
+                        disabled={isSold}
+                        className={`border border-slate-200/80 p-3.5 rounded-2xl transition-all duration-200 ${
+                          isSold
+                            ? "bg-slate-100 cursor-not-allowed opacity-50"
+                            : "bg-slate-50 hover:bg-slate-100 active:scale-90 cursor-pointer"
+                        }`}
+                      >
+                        <Heart
+                          size={20}
+                          fill={isWishlisted ? "currentColor" : "none"}
+                          className={isWishlisted ? "text-rose-500" : "text-slate-600"}
+                        />
+                      </button>
+                    </div>
 
             <div className="flex gap-3 text-sm font-semibold">
               <button className="flex-1 border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 py-3 rounded-xl flex items-center justify-center gap-2 transition cursor-pointer bg-white">
