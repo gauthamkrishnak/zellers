@@ -129,6 +129,10 @@ def serialize_product(p: Product, is_wishlisted: Optional[bool] = None) -> dict:
         parts = raw_desc.split("]", 1)
         if len(parts) == 2:
             clean_desc = parts[1].lstrip("\r\n")
+    if cond and str(cond).strip().lower() == "brand new":
+        cond = "Brand New"
+    if getattr(p, "is_brand_new", False) and (not cond or cond == "Excellent"):
+        cond = "Brand New"
     if not cond:
         cond = "Excellent"
     is_brand_new = (cond == "Brand New")
@@ -158,6 +162,31 @@ def serialize_product(p: Product, is_wishlisted: Optional[bool] = None) -> dict:
 
 # ─── Products ──────────────────────────────────────────────────────
 
+def get_optional_user_id_from_header(authorization: Optional[str]) -> Optional[int]:
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    try:
+        token = authorization.split(" ", 1)[1]
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("user_id")
+        if user_id:
+            return int(user_id)
+        sub = payload.get("sub")
+        if sub:
+            if str(sub).isdigit():
+                return int(sub)
+            db = SessionLocal()
+            try:
+                user = db.query(User).filter(User.email == str(sub)).first()
+                if user:
+                    return user.id
+            finally:
+                db.close()
+    except Exception:
+        pass
+    return None
+
+
 @app.get("/products/")
 def get_products(
     category: str = "All",
@@ -166,7 +195,13 @@ def get_products(
 ):
     db = SessionLocal()
 
+    current_user_id = get_optional_user_id_from_header(authorization)
+
     query = db.query(Product)
+
+    # Exclude logged-in user's own listings before applying other filters
+    if current_user_id is not None:
+        query = query.filter((Product.user_id != current_user_id) | (Product.user_id.is_(None)))
 
     if category != "All":
         query = query.filter(Product.type == category)
@@ -178,19 +213,13 @@ def get_products(
 
     # Determine wishlisted product IDs for the current user
     wishlisted_ids = set()
-    if authorization and authorization.startswith("Bearer "):
-        try:
-            token = authorization.split(" ", 1)[1]
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            user_id = int(payload.get("sub"))
-            wishlisted_ids = {
-                w.product_id
-                for w in db.query(Wishlist)
-                .filter(Wishlist.user_id == user_id)
-                .all()
-            }
-        except (JWTError, ValueError, TypeError):
-            pass
+    if current_user_id is not None:
+        wishlisted_ids = {
+            w.product_id
+            for w in db.query(Wishlist)
+            .filter(Wishlist.user_id == current_user_id)
+            .all()
+        }
 
     # Add is_wishlisted and is_sold field to each product
     result = [serialize_product(p, is_wishlisted=(p.id in wishlisted_ids)) for p in products]

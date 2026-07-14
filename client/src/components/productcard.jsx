@@ -10,7 +10,7 @@ function ProductCard(props) {
   const { refreshWishlist } = useWishlist();
   const { getAuthHeaders, isAuthenticated } = useAuth();
 
-  const { id, title, price, image, location, listed, is_brand_new } = props;
+  const { id, title, price, image, location, listed, condition } = props;
   const isSold = Boolean(props.is_sold || props.status === "sold");
 
   const [isWishlisted, setIsWishlisted] = useState(props.is_wishlisted);
@@ -65,11 +65,12 @@ function ProductCard(props) {
       }
     >
       <div className="relative h-60 bg-slate-50 flex items-center justify-center p-6 overflow-hidden">
-        {/* Brand New Badge (only when not sold) */}
-        {!isSold && is_brand_new && (
-          <div className="absolute top-4 left-4 z-10">
-            <span className="bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wide px-3 py-1 rounded-full shadow-lg">
-              ✨ Brand New
+        {/* Brand New Badge (only when condition === 'Brand New' and not sold) */}
+        {!isSold && condition === "Brand New" && (
+          <div className="absolute top-3.5 left-3.5 z-10">
+            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-[11px] font-bold tracking-wide px-3 py-1.5 rounded-full shadow-md shadow-indigo-600/20 border border-white/15 flex items-center gap-1">
+              <span>✨</span>
+              <span>Brand New</span>
             </span>
           </div>
         )}

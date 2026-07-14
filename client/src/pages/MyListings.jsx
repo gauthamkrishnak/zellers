@@ -208,10 +208,17 @@ export default function MyListings() {
                       </span>
                     )}
 
-                    {item.condition && (
-                      <span className="bg-slate-900/80 backdrop-blur-xs text-white text-[11px] font-semibold px-2.5 py-1 rounded-full">
-                        {item.condition}
+                    {item.condition === "Brand New" ? (
+                      <span className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
+                        <span>✨</span>
+                        <span>Brand New</span>
                       </span>
+                    ) : (
+                      item.condition && (
+                        <span className="bg-slate-900/80 backdrop-blur-xs text-white text-[11px] font-semibold px-2.5 py-1 rounded-full">
+                          {item.condition}
+                        </span>
+                      )
                     )}
                   </div>
 
