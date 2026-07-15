@@ -113,3 +113,9 @@ CATEGORY_BRAND_MAPPING = {
         "Unbranded",
     ],
 }
+
+# ─── Sponsored Listing / Boost Constants ───────────────────────────
+BOOST_PRICE = 199
+BOOST_DURATION_DAYS = 7
+BOOST_PLAN_BASIC = "basic"
+

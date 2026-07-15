@@ -8,6 +8,12 @@ import {
   Loader2,
   RefreshCw,
   Trash2,
+  ShieldCheck,
+  ThumbsUp,
+  Tag,
+  Wrench,
+  AlertTriangle,
+  Megaphone,
 } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
@@ -19,7 +25,7 @@ export const CONDITIONS = [
   {
     id: "Brand New",
     title: "Brand New",
-    icon: "🆕",
+    icon: <ShieldCheck size={20} className="text-blue-600" />,
     desc: "Unused product in original packaging.",
     examples: [
       "Sealed iPhone",
@@ -31,7 +37,7 @@ export const CONDITIONS = [
   {
     id: "Like New",
     title: "Like New",
-    icon: "✨",
+    icon: <CheckCircle2 size={20} className="text-indigo-600" />,
     desc: "Used very little. Looks almost new. No visible scratches or damage.",
     examples: [
       "Laptop used for one week",
@@ -43,7 +49,7 @@ export const CONDITIONS = [
   {
     id: "Excellent",
     title: "Excellent",
-    icon: "⭐",
+    icon: <ThumbsUp size={20} className="text-emerald-600" />,
     desc: "Minor cosmetic wear. Works perfectly.",
     examples: [
       "Phone with tiny scratches",
@@ -55,7 +61,7 @@ export const CONDITIONS = [
   {
     id: "Good",
     title: "Good",
-    icon: "👍",
+    icon: <Tag size={20} className="text-amber-600" />,
     desc: "Visible signs of use. Fully functional.",
     examples: [
       "Bicycle with paint scratches",
@@ -67,7 +73,7 @@ export const CONDITIONS = [
   {
     id: "Fair",
     title: "Fair",
-    icon: "🔧",
+    icon: <Wrench size={20} className="text-orange-600" />,
     desc: "Heavy cosmetic wear. Still usable.",
     examples: [
       "Laptop with cracked body",
@@ -79,7 +85,7 @@ export const CONDITIONS = [
   {
     id: "For Parts / Repair",
     title: "For Parts / Repair",
-    icon: "⚠️",
+    icon: <AlertTriangle size={20} className="text-rose-600" />,
     desc: "Not fully functional. Needs repair.",
     examples: [
       "Phone with broken display",
@@ -132,6 +138,8 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const [boostOnCreate, setBoostOnCreate] = useState(false);
+  const [boosting, setBoosting] = useState(false);
 
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -198,6 +206,8 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
     setError("");
     setSuccess(false);
     setIsDragging(false);
+    setBoostOnCreate(false);
+    setBoosting(false);
   };
 
   const handleClose = () => {
@@ -248,6 +258,74 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
           // Do NOT manually set Content-Type: multipart/form-data so the browser includes boundary
         },
       });
+
+      if (boostOnCreate && response.data?.id) {
+        setBoosting(true);
+        try {
+          const initRes = await axios.post(
+            `http://127.0.0.1:8000/products/${response.data.id}/boost/initiate`,
+            {},
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+
+          const options = {
+            key: initRes.data.key,
+            amount: initRes.data.amount,
+            currency: initRes.data.currency,
+            name: "Zellers Marketplace",
+            description: `Boost Listing: ${form.title}`,
+            order_id: initRes.data.razorpay_order_id,
+            handler: async function (paymentResponse) {
+              try {
+                const verifyRes = await axios.post(
+                  `http://127.0.0.1:8000/products/${response.data.id}/boost/verify`,
+                  {
+                    razorpay_order_id: paymentResponse.razorpay_order_id,
+                    razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                    razorpay_signature: paymentResponse.razorpay_signature,
+                  },
+                  { headers: { Authorization: `Bearer ${token}` } }
+                );
+                setSuccess(true);
+                setTimeout(() => {
+                  handleClose();
+                  onSuccess?.(verifyRes.data.product || response.data);
+                }, 1500);
+              } catch (verErr) {
+                setError(verErr.response?.data?.detail || "Boost verification failed, but item was listed.");
+                setTimeout(() => {
+                  handleClose();
+                  onSuccess?.(response.data);
+                }, 2500);
+              }
+            },
+            modal: {
+              ondismiss: function () {
+                setError("Boost payment cancelled. Your item was listed without boost.");
+                setTimeout(() => {
+                  handleClose();
+                  onSuccess?.(response.data);
+                }, 2000);
+              },
+            },
+            theme: { color: "#4F46E5" },
+          };
+
+          const rzp = new window.Razorpay(options);
+          rzp.open();
+          return;
+        } catch (boostErr) {
+          setError("Item listed, but failed to start boost: " + (boostErr.response?.data?.detail || boostErr.message));
+          setTimeout(() => {
+            handleClose();
+            onSuccess?.(response.data);
+          }, 2500);
+          return;
+        } finally {
+          setBoosting(false);
+        }
+      }
+
       setSuccess(true);
       setTimeout(() => {
         handleClose();
@@ -611,13 +689,52 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
                 />
               </div>
 
+              {/* Boost Listing Optional Checkbox Section */}
+              <div
+                onClick={() => !loading && !boosting && setBoostOnCreate(!boostOnCreate)}
+                className={`p-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer flex items-start gap-3.5 ${
+                  boostOnCreate
+                    ? "border-amber-500 bg-amber-50/60 shadow-md ring-2 ring-amber-500/20"
+                    : "border-slate-200 hover:border-slate-300 bg-gradient-to-r from-amber-50/30 to-white hover:shadow-sm"
+                }`}
+              >
+                <div className="mt-0.5 shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={boostOnCreate}
+                    onChange={() => {}}
+                    disabled={loading || boosting}
+                    className="w-5 h-5 rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                  />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
+                      <Megaphone size={16} className="text-amber-600 shrink-0" />
+                      <span>Boost Your Listing (Sponsored)</span>
+                    </span>
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                      ₹199 / 7 Days
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Get up to 5x more views! Your product will be highlighted with a gold badge and appear first at the top of search results and category pages.
+                  </p>
+                </div>
+              </div>
+
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || boosting}
                 className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-75 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 hover:scale-[1.01] active:scale-95 transition-all duration-200 cursor-pointer disabled:cursor-not-allowed mt-1"
               >
-                {loading ? (
+                {boosting ? (
+                  <>
+                    <Loader2 className="animate-spin" size={18} />
+                    <span>Opening payment gateway for boost...</span>
+                  </>
+                ) : loading ? (
                   <>
                     <Loader2 className="animate-spin" size={18} />
                     <span>Publishing listing...</span>
@@ -625,7 +742,7 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
                 ) : (
                   <>
                     <Upload size={18} />
-                    <span>Post Item</span>
+                    <span>{boostOnCreate ? "Post & Boost (₹199)" : "Post Item"}</span>
                   </>
                 )}
               </button>

@@ -1,5 +1,5 @@
 import React from "react";
-import { UserCheck, Star, Package, MessageSquare } from "lucide-react";
+import { UserCheck, Star, Package, MessageSquare, UserRound } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 export default function SellerInfo({ product }) {
@@ -44,7 +44,8 @@ export default function SellerInfo({ product }) {
             <p className="font-extrabold text-slate-800 text-base truncate flex items-center gap-1.5">
               <span>Sold by</span>
               <span className="inline-flex items-center gap-1 text-indigo-600">
-                👤 {displaySellerName}
+                <UserRound size={15} className="text-indigo-600 shrink-0" />
+                <span>{displaySellerName}</span>
               </span>
             </p>
             {isVerified && (

@@ -12,6 +12,11 @@ import {
   CheckCircle2,
   AlertTriangle,
   X,
+  Megaphone,
+  ShieldCheck,
+  History,
+  Clock,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import SellItemModal from "../components/SellItemModal";
@@ -29,6 +34,10 @@ export default function MyListings() {
   const [deleteCandidate, setDeleteCandidate] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
+  const [boostingItem, setBoostingItem] = useState(null);
+  const [historyModalItem, setHistoryModalItem] = useState(null);
+  const [boostHistory, setBoostHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const fetchMyListings = async () => {
     if (!isAuthenticated) {
@@ -78,6 +87,73 @@ export default function MyListings() {
       );
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleBoostListing = async (item) => {
+    if (item.is_sold || item.status === "sold" || boostingItem) return;
+    setBoostingItem(item.id);
+    try {
+      const initRes = await axios.post(
+        `http://127.0.0.1:8000/products/${item.id}/boost/initiate`,
+        {},
+        { headers: getAuthHeaders() }
+      );
+
+      const options = {
+        key: initRes.data.key,
+        amount: initRes.data.amount,
+        currency: initRes.data.currency,
+        name: "Zellers Marketplace",
+        description: `Boost Listing: ${item.title}`,
+        order_id: initRes.data.razorpay_order_id,
+        handler: async function (paymentResponse) {
+          try {
+            await axios.post(
+              `http://127.0.0.1:8000/products/${item.id}/boost/verify`,
+              {
+                razorpay_order_id: paymentResponse.razorpay_order_id,
+                razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                razorpay_signature: paymentResponse.razorpay_signature,
+              },
+              { headers: getAuthHeaders() }
+            );
+            fetchMyListings();
+            setSuccessMessage("Listing boosted successfully! Your item now appears first with a Sponsored badge.");
+            setTimeout(() => setSuccessMessage(""), 5000);
+          } catch (verErr) {
+            alert(verErr.response?.data?.detail || "Boost verification failed. Please check payment status.");
+          }
+        },
+        modal: {
+          ondismiss: function () {},
+        },
+        theme: { color: "#4F46E5" },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      alert(err.response?.data?.detail || "Could not initiate boost checkout.");
+    } finally {
+      setBoostingItem(null);
+    }
+  };
+
+  const handleViewHistory = async (item) => {
+    setHistoryModalItem(item);
+    setHistoryLoading(true);
+    try {
+      const res = await axios.get(
+        `http://127.0.0.1:8000/products/${item.id}/boost-history`,
+        { headers: getAuthHeaders() }
+      );
+      setBoostHistory(res.data || []);
+    } catch (err) {
+      alert("Failed to load boost history.");
+      setBoostHistory([]);
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -212,8 +288,8 @@ export default function MyListings() {
                     )}
 
                     {item.condition === "Brand New" ? (
-                      <span className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
-                        <span>✨</span>
+                      <span className="bg-blue-50 text-blue-700 border border-blue-200/80 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                        <ShieldCheck size={13} className="text-blue-600 shrink-0" />
                         <span>Brand New</span>
                       </span>
                     ) : (
@@ -223,6 +299,17 @@ export default function MyListings() {
                         </span>
                       )
                     )}
+
+                    {item.is_active_boost ? (
+                      <span className="bg-amber-50 text-amber-800 border border-amber-200/80 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                        <Megaphone size={13} className="text-amber-600 shrink-0" />
+                        <span>Sponsored</span>
+                      </span>
+                    ) : item.boost_status === "expired" ? (
+                      <span className="bg-slate-700 text-slate-300 text-[10px] font-bold px-2.5 py-1 rounded-full border border-slate-600">
+                        Boost Expired
+                      </span>
+                    ) : null}
                   </div>
 
                   {isSold && (
@@ -255,6 +342,15 @@ export default function MyListings() {
                       </span>
                     </div>
 
+                    {item.is_active_boost && item.boost_end_date && (
+                      <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-xl border border-amber-200">
+                        <Clock size={13} className="text-amber-600" />
+                        <span>
+                          Active until: {new Date(item.boost_end_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                      </div>
+                    )}
+
                     <h3 className="font-bold text-slate-800 text-base leading-snug line-clamp-2">
                       {item.title}
                     </h3>
@@ -275,7 +371,39 @@ export default function MyListings() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      {!isSold && !item.is_active_boost && (
+                        <button
+                          onClick={() => handleBoostListing(item)}
+                          disabled={boostingItem === item.id}
+                          title="Boost listing visibility for ₹199"
+                          className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 shadow-md shadow-amber-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-70"
+                        >
+                          {boostingItem === item.id ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <Megaphone size={14} className="text-slate-950 shrink-0" />
+                          )}
+                          <span>{item.boost_status === "expired" ? "Boost Again (₹199)" : "Boost (₹199)"}</span>
+                        </button>
+                      )}
+
+                      {item.is_active_boost && (
+                        <span className="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                          <CheckCircle2 size={14} className="text-emerald-600" />
+                          <span>Boost Active</span>
+                        </span>
+                      )}
+
+                      <button
+                        onClick={() => handleViewHistory(item)}
+                        title="View boost transaction history"
+                        className="p-2 rounded-xl text-xs font-bold border border-slate-200 hover:border-indigo-300 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition-all cursor-pointer bg-white flex items-center gap-1"
+                      >
+                        <History size={15} />
+                        <span className="hidden sm:inline">History</span>
+                      </button>
+
                       <button
                         onClick={() => navigate(`/edit-product/${item.id}`)}
                         disabled={isSold}
@@ -284,14 +412,14 @@ export default function MyListings() {
                             ? "Sold items cannot be edited"
                             : "Edit listing"
                         }
-                        className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
+                        className={`p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1 ${
                           isSold
                             ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
                             : "bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 border-slate-200 hover:border-indigo-300 cursor-pointer"
                         }`}
                       >
                         <Edit3 size={14} />
-                        <span>Edit</span>
+                        <span className="hidden sm:inline">Edit</span>
                       </button>
 
                       <button
@@ -361,6 +489,108 @@ export default function MyListings() {
           setTimeout(() => setSuccessMessage(""), 4000);
         }}
       />
+
+      {/* Boost History Modal */}
+      {historyModalItem && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 animate-fadeIn max-h-[85vh] flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 font-bold">
+                    <Megaphone size={20} className="text-amber-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900">
+                      Sponsored Listing History
+                    </h3>
+                    <p className="text-xs text-slate-500 truncate max-w-sm">
+                      {historyModalItem.title}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setHistoryModalItem(null)}
+                  className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-all cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="py-4 overflow-y-auto max-h-[55vh]">
+                {historyLoading ? (
+                  <div className="py-12 flex flex-col items-center justify-center text-slate-400">
+                    <Loader2 size={28} className="animate-spin text-indigo-600 mb-2" />
+                    <span className="text-xs font-semibold">Loading boost history...</span>
+                  </div>
+                ) : boostHistory.length === 0 ? (
+                  <div className="py-12 text-center text-slate-500">
+                    <p className="text-sm font-semibold">No boost purchases recorded for this item.</p>
+                    <p className="text-xs text-slate-400 mt-1">Boost this item to gain 5x more visibility across Zellers.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-slate-400 uppercase font-extrabold tracking-wider text-[10px]">
+                          <th className="py-3 px-2">Boost Date</th>
+                          <th className="py-3 px-2">Plan / Expiry</th>
+                          <th className="py-3 px-2">Amount Paid</th>
+                          <th className="py-3 px-2">Payment ID</th>
+                          <th className="py-3 px-2">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {boostHistory.map((bh) => (
+                          <tr key={bh.id} className="hover:bg-slate-50/60 transition-colors">
+                            <td className="py-3 px-2 font-bold text-slate-700">
+                              {bh.created_at
+                                ? new Date(bh.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                                : "N/A"}
+                            </td>
+                            <td className="py-3 px-2 text-slate-600">
+                              <span className="font-bold uppercase tracking-wider text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded mr-1.5">
+                                {bh.boost_plan}
+                              </span>
+                              <span className="text-slate-500">
+                                Exp: {bh.boost_end_date ? new Date(bh.boost_end_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "N/A"}
+                              </span>
+                            </td>
+                            <td className="py-3 px-2 font-black text-emerald-600">
+                              ₹{Number(bh.amount_paid).toLocaleString("en-IN")}
+                            </td>
+                            <td className="py-3 px-2 font-mono text-slate-500 text-[11px] truncate max-w-[110px]" title={bh.payment_id || "N/A"}>
+                              {bh.payment_id || "Payment recorded"}
+                            </td>
+                            <td className="py-3 px-2">
+                              <span className={`px-2 py-0.5 rounded-full font-extrabold uppercase text-[10px] ${
+                                bh.status === "active"
+                                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                  : "bg-slate-100 text-slate-600 border border-slate-200"
+                              }`}>
+                                {bh.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setHistoryModalItem(null)}
+                className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

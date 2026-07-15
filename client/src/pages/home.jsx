@@ -5,7 +5,7 @@ import FilterSidebar from "../components/FilterSidebar";
 import FilterDrawer from "../components/FilterDrawer";
 import Loader from "../components/Loader";
 import { useOutletContext } from "react-router-dom";
-import { Search, Filter, X, RotateCcw, SlidersHorizontal, Sparkles } from "lucide-react";
+import { Search, Filter, X, RotateCcw, SlidersHorizontal, Sparkles, TrendingDown } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 
@@ -162,8 +162,8 @@ function Home() {
                     : `${filters.category} Listings`}
                 </span>
                 {filters.dealsOnly && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
-                    <Sparkles size={12} /> Deals
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                    <TrendingDown size={13} className="text-emerald-600 shrink-0" /> Deals
                   </span>
                 )}
               </h2>
@@ -268,11 +268,12 @@ function Home() {
               )}
 
               {filters.dealsOnly && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100 text-amber-950 font-bold text-xs shadow-2xs">
-                  ✨ Attractive Deals
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-semibold text-xs">
+                  <TrendingDown size={13} className="text-emerald-600 shrink-0" />
+                  <span>Attractive Deals</span>
                   <button
                     onClick={() => setFilters((prev) => ({ ...prev, dealsOnly: false }))}
-                    className="hover:bg-amber-200 rounded-full p-0.5 transition cursor-pointer"
+                    className="hover:bg-emerald-100 rounded-full p-0.5 transition cursor-pointer text-emerald-600 ml-1"
                     title="Remove deals filter"
                   >
                     <X size={13} />

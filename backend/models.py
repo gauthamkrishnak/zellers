@@ -1,5 +1,5 @@
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, UniqueConstraint
+from datetime import datetime, timezone
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, UniqueConstraint, DateTime
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -19,6 +19,10 @@ class Product(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     condition = Column(String, nullable=True, default="Excellent")
     brand = Column(String, nullable=True, index=True)
+    boost_status = Column(String, nullable=True, default=None)
+    boost_start_date = Column(DateTime(timezone=True), nullable=True)
+    boost_end_date = Column(DateTime(timezone=True), nullable=True)
+    active_boost_id = Column(Integer, ForeignKey("product_boosts.id"), nullable=True)
     seller = relationship("User", foreign_keys=[user_id])
 
 
@@ -87,4 +91,38 @@ class OrderItem(Base):
     snapshot_image_urls = Column(String, nullable=True)  # JSON string of image URLs
     snapshot_seller_name = Column(String, nullable=True)
     snapshot_seller_id = Column(Integer, nullable=True)
-    snapshot_purchase_time = Column(String, nullable=True)
+    snapshot_purchase_time = Column(String, nullable=True)
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    payment_type = Column(String, nullable=False, index=True)  # 'checkout', 'boost', 'subscription'
+    amount = Column(Integer, nullable=False)
+    currency = Column(String, default="INR", nullable=False)
+    payment_gateway = Column(String, default="Razorpay", nullable=False)
+    payment_id = Column(String, nullable=False, index=True)
+    razorpay_order_id = Column(String, nullable=False, index=True)
+    status = Column(String, default="SUCCESS", nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class ProductBoost(Base):
+    __tablename__ = "product_boosts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False, index=True)
+    seller_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    payment_id = Column(Integer, ForeignKey("payments.id"), nullable=False, index=True)
+    boost_plan = Column(String, default="basic", nullable=False)
+    amount_paid = Column(Integer, nullable=False)
+    boost_start_date = Column(DateTime(timezone=True), nullable=False)
+    boost_end_date = Column(DateTime(timezone=True), nullable=False)
+    status = Column(String, default="active", nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    product = relationship("Product", foreign_keys=[product_id])
+    seller = relationship("User", foreign_keys=[seller_id])
+    payment_record = relationship("Payment", foreign_keys=[payment_id])
+

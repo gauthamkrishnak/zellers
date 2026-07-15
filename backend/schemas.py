@@ -1,5 +1,7 @@
-from typing import Optional
+from datetime import datetime
+from typing import Optional, List, Union
 from pydantic import BaseModel, EmailStr
+
 
 
 class UserRegister(BaseModel):
@@ -65,6 +67,11 @@ class ProductResponse(BaseModel):
     seller_id: Optional[int] = None
     seller_name: Optional[str] = None
     is_wishlisted: Optional[bool] = None
+    boost_status: Optional[str] = None
+    boost_start_date: Optional[Union[datetime, str]] = None
+    boost_end_date: Optional[Union[datetime, str]] = None
+    active_boost_id: Optional[int] = None
+    is_active_boost: Optional[bool] = False
 
     class Config:
         from_attributes = True
@@ -135,5 +142,53 @@ class PurchaseHistoryItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PaymentResponse(BaseModel):
+    id: int
+    payment_type: str
+    amount: int
+    currency: str
+    payment_gateway: str
+    payment_id: str
+    razorpay_order_id: str
+    status: str
+    created_at: Optional[Union[datetime, str]] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ProductBoostResponse(BaseModel):
+    id: int
+    product_id: int
+    seller_id: int
+    payment_id: int
+    boost_plan: str
+    amount_paid: int
+    boost_start_date: Optional[Union[datetime, str]] = None
+    boost_end_date: Optional[Union[datetime, str]] = None
+    status: str
+    created_at: Optional[Union[datetime, str]] = None
+
+    class Config:
+        from_attributes = True
+
+
+class BoostInitiateResponse(BaseModel):
+    razorpay_order_id: str
+    razorpay_key_id: str
+    amount: int
+    currency: str
+    amount_inr: int
+    key: str
+    id: str
+
+
+class BoostVerifyRequest(BaseModel):
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+
 
 
