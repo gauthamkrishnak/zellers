@@ -1,4 +1,4 @@
-import { X, Trash2, ShoppingBag, CreditCard, AlertCircle } from "lucide-react";
+import { X, Trash2, ShoppingBag, CreditCard, AlertCircle, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 
@@ -9,11 +9,15 @@ function CartSidebar() {
     isCartOpen,
     setIsCartOpen,
     removeFromCart,
+    removeSoldItems,
     clearCart,
     checkout,
     cartTotal,
     isCheckingOut,
     checkoutError,
+    availableCount,
+    soldCount,
+    hasSoldItems,
   } = useCart();
 
   return (
@@ -59,50 +63,107 @@ function CartSidebar() {
               <span className="text-sm font-medium">Your cart is empty.</span>
             </div>
           ) : (
-            cartItems.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-4 p-3 bg-white border border-slate-100 rounded-2xl shadow-sm"
-              >
-                <div className="w-20 h-20 bg-slate-50 rounded-xl overflow-hidden flex items-center justify-center shrink-0">
-                  <img
-                    src={`http://127.0.0.1:8000/uploads/${item.image}`}
-                    alt={item.title}
-                    className="max-w-full max-h-full object-contain"
-                  />
-                </div>
-                <div className="flex-1 flex flex-col gap-1">
-                  <h3 className="text-sm font-bold text-slate-800 line-clamp-2">{item.title}</h3>
-                  <p className="text-indigo-600 font-extrabold text-sm">₹{item.price.toLocaleString("en-IN")}</p>
-                </div>
-                <button
-                  onClick={() => removeFromCart(item.id)}
-                  className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0"
+            cartItems.map((item) => {
+              const isSold = Boolean(item.is_sold || item.status === "sold");
+              return (
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-4 p-3 border rounded-2xl shadow-sm transition-all ${
+                    isSold ? "bg-slate-100/70 border-slate-300 opacity-75" : "bg-white border-slate-100"
+                  }`}
                 >
-                  <Trash2 size={18} />
-                </button>
-              </div>
-            ))
+                  <div className="w-20 h-20 bg-slate-50 rounded-xl overflow-hidden flex items-center justify-center shrink-0 relative border border-slate-100">
+                    <img
+                      src={`http://127.0.0.1:8000/uploads/${item.image}`}
+                      alt={item.title}
+                      className={`max-w-full max-h-full object-contain transition-all ${
+                        isSold ? "grayscale opacity-70" : ""
+                      }`}
+                    />
+                    {isSold && (
+                      <div className="absolute inset-0 bg-slate-900/40 flex items-center justify-center">
+                        <span className="bg-slate-900 text-white font-bold text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider">
+                          Sold Out
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 flex flex-col gap-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-1">
+                      {isSold && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-white bg-slate-900 px-2 py-0.5 rounded-full">
+                          SOLD OUT
+                        </span>
+                      )}
+                      {isSold && item.is_wishlisted && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-white bg-indigo-900 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Heart size={9} fill="currentColor" /> Moved to Sold
+                        </span>
+                      )}
+                    </div>
+                    <h3 className={`text-sm font-bold line-clamp-2 ${isSold ? "text-slate-500 line-through" : "text-slate-800"}`}>
+                      {item.title}
+                    </h3>
+                    <p className={`font-extrabold text-sm ${isSold ? "text-slate-400 line-through" : "text-indigo-600"}`}>
+                      ₹{item.price.toLocaleString("en-IN")}
+                    </p>
+                    {isSold && (
+                      <p className="text-[10px] font-semibold text-rose-600 flex items-center gap-1">
+                        <AlertCircle size={11} className="shrink-0" />
+                        <span>Already purchased</span>
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => removeFromCart(item.id)}
+                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0"
+                    title="Remove from Cart"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              );
+            })
           )}
         </div>
 
         {cartItems.length > 0 && (
           <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex flex-col gap-3">
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>Items ({availableCount} available{soldCount > 0 ? `, ${soldCount} Sold Out` : ""})</span>
+            </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-600 font-semibold">Total</span>
+              <span className="text-slate-600 font-semibold">Subtotal</span>
               <span className="text-xl font-extrabold text-indigo-600">
                 ₹{cartTotal.toLocaleString("en-IN")}
               </span>
             </div>
 
+            {hasSoldItems && (
+              <div className="p-2.5 bg-amber-500/15 border border-amber-500/30 text-amber-900 rounded-xl text-xs font-semibold flex items-center gap-1.5">
+                <AlertCircle className="text-amber-600 shrink-0" size={14} />
+                <span>Remove unavailable items to continue.</span>
+              </div>
+            )}
+
             <button
               onClick={() => checkout(navigate)}
-              disabled={isCheckingOut}
-              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              disabled={hasSoldItems || isCheckingOut}
+              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <CreditCard size={18} />
               <span>{isCheckingOut ? "Initiating..." : "Checkout"}</span>
             </button>
+
+            {hasSoldItems && (
+              <button
+                onClick={removeSoldItems}
+                className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Trash2 size={14} />
+                <span>Remove Sold Items</span>
+              </button>
+            )}
 
             <div className="flex gap-2">
               <button
@@ -127,6 +188,5 @@ function CartSidebar() {
     </>
   );
 }
-
 
 export default CartSidebar;

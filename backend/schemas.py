@@ -20,11 +20,15 @@ class PaymentVerifyRequest(BaseModel):
     razorpay_order_id: str
     razorpay_payment_id: str
     razorpay_signature: str
+    mode: Optional[str] = None
+    product_id: Optional[int] = None
 
 
 class PaymentFailureRequest(BaseModel):
     razorpay_order_id: Optional[str] = None
     error_description: Optional[str] = None
+    mode: Optional[str] = None
+    product_id: Optional[int] = None
 
 
 class ProductCreate(BaseModel):

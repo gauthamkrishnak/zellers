@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Trash2,
@@ -8,6 +8,8 @@ import {
   CreditCard,
   AlertCircle,
   CheckCircle2,
+  Tag,
+  Heart,
 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 
@@ -15,11 +17,15 @@ export default function Cart() {
   const {
     cartItems,
     removeFromCart,
+    removeSoldItems,
     clearCart,
     cartTotal,
     handleRazorpayCheckout,
     isCheckingOut,
     checkoutError,
+    availableCount,
+    soldCount,
+    hasSoldItems,
   } = useCart();
   const navigate = useNavigate();
 
@@ -45,12 +51,23 @@ export default function Cart() {
           </div>
 
           {cartItems.length > 0 && (
-            <button
-              onClick={clearCart}
-              className="text-sm font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-4 py-2 rounded-xl transition-all cursor-pointer self-start sm:self-center"
-            >
-              Clear Cart
-            </button>
+            <div className="flex items-center gap-2.5 self-start sm:self-center">
+              {hasSoldItems && (
+                <button
+                  onClick={removeSoldItems}
+                  className="text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl transition-all cursor-pointer shadow-sm flex items-center gap-1.5"
+                >
+                  <Trash2 size={14} />
+                  <span>Remove Sold Items</span>
+                </button>
+              )}
+              <button
+                onClick={clearCart}
+                className="text-sm font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-4 py-2 rounded-xl transition-all cursor-pointer"
+              >
+                Clear Cart
+              </button>
+            </div>
           )}
         </div>
 
@@ -90,48 +107,82 @@ export default function Cart() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             {/* Cart Items List */}
             <div className="lg:col-span-2 space-y-4">
-              {cartItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <div className="w-full sm:w-28 h-28 bg-slate-50 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-slate-100">
-                    <img
-                      src={`http://127.0.0.1:8000/uploads/${item.image}`}
-                      alt={item.title}
-                      className="max-w-full max-h-full object-contain"
-                    />
-                  </div>
+              {cartItems.map((item) => {
+                const isSold = Boolean(item.is_sold || item.status === "sold");
+                return (
+                  <div
+                    key={item.id}
+                    className={`border rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 shadow-sm transition-all ${
+                      isSold
+                        ? "bg-slate-100/70 border-slate-300 opacity-75"
+                        : "bg-white border-slate-200 hover:shadow-md"
+                    }`}
+                  >
+                    <div className="w-full sm:w-28 h-28 bg-slate-50 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-slate-100 relative">
+                      <img
+                        src={`http://127.0.0.1:8000/uploads/${item.image}`}
+                        alt={item.title}
+                        className={`max-w-full max-h-full object-contain transition-all ${
+                          isSold ? "grayscale opacity-70" : ""
+                        }`}
+                      />
+                      {isSold && (
+                        <div className="absolute inset-0 bg-slate-900/40 flex items-center justify-center">
+                          <span className="bg-slate-900 text-white font-bold text-[10px] px-2 py-0.5 rounded-md uppercase tracking-wider shadow">
+                            Sold Out
+                          </span>
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="flex-1 min-w-0">
-                    <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full mb-1">
-                      {item.type}
-                    </span>
-                    <h3 className="text-lg font-bold text-slate-900 truncate">
-                      {item.title}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1 line-clamp-1">
-                      {item.desc}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Location: {item.location}
-                    </p>
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                        <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">
+                          {item.type}
+                        </span>
+                        {isSold && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-white bg-slate-900 px-2.5 py-0.5 rounded-full">
+                            SOLD OUT
+                          </span>
+                        )}
+                        {isSold && item.is_wishlisted && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-white bg-indigo-900 px-2.5 py-0.5 rounded-full">
+                            <Heart size={10} fill="currentColor" /> Moved to Sold
+                          </span>
+                        )}
+                      </div>
+                      <h3 className={`text-lg font-bold truncate ${isSold ? "text-slate-600 line-through" : "text-slate-900"}`}>
+                        {item.title}
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-1">
+                        {item.desc}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Location: {item.location}
+                      </p>
+                      {isSold && (
+                        <p className="text-xs font-semibold text-rose-600 mt-1.5 flex items-center gap-1.5">
+                          <AlertCircle size={14} className="shrink-0" />
+                          <span>This product has already been purchased.</span>
+                        </p>
+                      )}
+                    </div>
 
-                  <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto mt-2 sm:mt-0 gap-2">
-                    <span className="text-xl font-extrabold text-indigo-600">
-                      ₹{item.price.toLocaleString("en-IN")}
-                    </span>
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
-                    >
-                      <Trash2 size={16} />
-                      Remove
-                    </button>
+                    <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto mt-2 sm:mt-0 gap-2">
+                      <span className={`text-xl font-extrabold ${isSold ? "text-slate-400 line-through" : "text-indigo-600"}`}>
+                        ₹{item.price.toLocaleString("en-IN")}
+                      </span>
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                      >
+                        <Trash2 size={16} />
+                        Remove
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Order Summary */}
@@ -142,7 +193,9 @@ export default function Cart() {
 
               <div className="space-y-4 text-sm mb-6">
                 <div className="flex items-center justify-between text-slate-600">
-                  <span>Subtotal ({cartItems.length} items)</span>
+                  <span>
+                    Subtotal ({availableCount} available{soldCount > 0 ? `, ${soldCount} Sold Out` : ""})
+                  </span>
                   <span className="font-bold text-slate-900">
                     ₹{cartTotal.toLocaleString("en-IN")}
                   </span>
@@ -163,10 +216,17 @@ export default function Cart() {
                 </div>
               </div>
 
+              {hasSoldItems && (
+                <div className="mb-4 p-3 bg-amber-500/15 border border-amber-500/30 text-amber-900 rounded-xl text-xs font-semibold flex items-center gap-2">
+                  <AlertCircle className="text-amber-600 shrink-0" size={16} />
+                  <span>Remove unavailable items to continue.</span>
+                </div>
+              )}
+
               <button
                 onClick={() => handleRazorpayCheckout(navigate)}
-                disabled={isCheckingOut}
-                className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:opacity-50 text-white font-extrabold text-base rounded-2xl shadow-lg shadow-indigo-600/25 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                disabled={hasSoldItems || isCheckingOut}
+                className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-base rounded-2xl shadow-lg shadow-indigo-600/25 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isCheckingOut ? (
                   <>

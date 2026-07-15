@@ -9,6 +9,7 @@ import {
   Loader2,
   Check,
   CreditCard,
+  XCircle,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
@@ -16,35 +17,64 @@ import { useCart } from "../context/CartContext";
 export default function PaymentGateway() {
   const navigate = useNavigate();
   const { getAuthHeaders, user } = useAuth();
-  const { cartItems, fetchCart } = useCart();
+  const { cartItems, fetchCart, setIsCartOpen } = useCart();
 
   const [loadingOrder, setLoadingOrder] = useState(true);
   const [orderData, setOrderData] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [unavailableModal, setUnavailableModal] = useState(false);
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const mode = searchParams.get("mode");
+  const productId = searchParams.get("product_id");
 
   useEffect(() => {
     const initOrder = async () => {
       setLoadingOrder(true);
       setErrorMessage(null);
+      setUnavailableModal(false);
       try {
+        const params = {};
+        if (mode === "buynow" && productId) {
+          params.mode = "buynow";
+          params.product_id = parseInt(productId, 10);
+        }
         const res = await axios.post(
           "http://127.0.0.1:8000/checkout/initiate",
           {},
-          { headers: getAuthHeaders() }
+          { headers: getAuthHeaders(), params }
         );
         setOrderData(res.data);
       } catch (err) {
-        setErrorMessage(
-          err.response?.data?.detail || "Failed to initiate checkout order."
-        );
+        const status = err.response?.status;
+        const detail = err.response?.data?.detail;
+        if (status === 400 && detail && (typeof detail === "object" || typeof detail === "string")) {
+          const msg = typeof detail === "object" ? detail.message : detail;
+          if (mode === "buynow" && productId) {
+            navigate(`/products/${productId}`, {
+              state: { buyNowError: msg || "This product is no longer available." },
+            });
+            return;
+          } else {
+            await fetchCart();
+            setUnavailableModal(true);
+            setErrorMessage(msg || "Some items in your cart are no longer available.");
+          }
+        } else {
+          setErrorMessage(
+            typeof detail === "string"
+              ? detail
+              : detail?.message || "Failed to initiate checkout order."
+          );
+        }
       } finally {
         setLoadingOrder(false);
       }
     };
 
     initOrder();
-  }, [getAuthHeaders]);
+  }, [getAuthHeaders, mode, productId, navigate, fetchCart]);
 
   const handleVerifyPayment = async (paymentId, signature) => {
     setProcessing(true);
@@ -56,18 +86,22 @@ export default function PaymentGateway() {
           razorpay_order_id: orderData.razorpay_order_id,
           razorpay_payment_id: paymentId,
           razorpay_signature: signature,
+          mode: orderData?.mode || mode,
+          product_id: orderData?.product_id || (productId ? parseInt(productId, 10) : null),
         },
         { headers: getAuthHeaders() }
       );
 
       if (verifyRes.data && verifyRes.data.success) {
-        await fetchCart();
+        if (orderData?.mode !== "buynow") {
+          await fetchCart();
+        }
         navigate(`/order-success?order_id=${verifyRes.data.order_id}`);
       }
     } catch (err) {
       setErrorMessage(
         err.response?.data?.detail ||
-          "Payment verification failed. Your cart remains unchanged."
+          "Payment verification failed. Your items remain unchanged."
       );
       setProcessing(false);
     }
@@ -88,7 +122,7 @@ export default function PaymentGateway() {
       amount: orderData.amount,
       currency: orderData.currency || "INR",
       name: "Zellers Marketplace",
-      description: "Order Checkout Gateway",
+      description: orderData?.mode === "buynow" ? "Buy Now Instant Checkout" : "Order Checkout Gateway",
       order_id: orderData.razorpay_order_id,
       handler: async function (response) {
         await handleVerifyPayment(
@@ -104,6 +138,8 @@ export default function PaymentGateway() {
               {
                 razorpay_order_id: orderData.razorpay_order_id,
                 error_description: "Payment modal dismissed by user",
+                mode: orderData?.mode || mode,
+                product_id: orderData?.product_id || (productId ? parseInt(productId, 10) : null),
               },
               { headers: getAuthHeaders() }
             );
@@ -131,8 +167,36 @@ export default function PaymentGateway() {
           <Loader2 size={40} className="animate-spin text-indigo-500 mx-auto" />
           <h2 className="text-xl font-bold">Initiating Secure Checkout...</h2>
           <p className="text-xs text-slate-400">
-            Establishing secure Razorpay session & fetching authoritative order summary from PostgreSQL
+            Establishing secure Razorpay session & validating item availability from PostgreSQL
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (unavailableModal) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 text-white animate-fadeIn">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-8 shadow-2xl space-y-6 text-center">
+          <div className="w-16 h-16 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto text-rose-500">
+            <XCircle size={36} />
+          </div>
+          <div>
+            <h3 className="text-xl font-black text-white">
+              Some items in your cart are no longer available.
+            </h3>
+            <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+              Review your cart before proceeding.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              navigate("/cart");
+            }}
+            className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-2xl shadow-lg shadow-indigo-600/20 transition-all cursor-pointer"
+          >
+            Review Cart
+          </button>
         </div>
       </div>
     );
@@ -140,143 +204,134 @@ export default function PaymentGateway() {
 
   if (!orderData) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 text-white">
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full text-center space-y-4 shadow-2xl">
-          <AlertCircle size={40} className="text-rose-500 mx-auto" />
-          <h2 className="text-xl font-bold">Checkout Initialization Failed</h2>
-          <p className="text-sm text-slate-400">{errorMessage}</p>
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-white">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full text-center space-y-6 shadow-2xl">
+          <div className="w-14 h-14 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto text-rose-500">
+            <AlertCircle size={32} />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">Checkout Error</h2>
+            <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+              {errorMessage || "Unable to initialize order session."}
+            </p>
+          </div>
           <button
-            onClick={() => navigate("/cart")}
-            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-bold text-sm cursor-pointer transition-colors"
+            onClick={() => {
+              if (mode === "buynow" && productId) {
+                navigate(`/products/${productId}`);
+              } else {
+                navigate("/cart");
+              }
+            }}
+            className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm rounded-xl transition-colors cursor-pointer"
           >
-            Return to Cart
+            Go Back
           </button>
         </div>
       </div>
     );
   }
 
-  const supportedMethods = [
-    "UPI",
-    "QR",
-    "Credit Cards",
-    "Debit Cards",
-    "Wallets",
-    "Netbanking",
-    "EMI",
-  ];
+  const itemsToDisplay = orderData.items || cartItems;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-950 text-slate-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
-        {/* Top Navigation Bar */}
-        <div className="flex items-center justify-between mb-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-800">
           <button
-            onClick={() => navigate("/cart")}
-            className="flex items-center gap-2 text-slate-400 hover:text-white text-sm font-semibold transition-colors cursor-pointer"
+            onClick={() => {
+              if (mode === "buynow" && productId) {
+                navigate(`/products/${productId}`);
+              } else {
+                navigate("/cart");
+              }
+            }}
+            className="inline-flex items-center gap-2 text-slate-400 hover:text-white font-semibold text-sm transition-colors cursor-pointer"
           >
-            <ArrowLeft size={16} /> Back to Cart
+            <ArrowLeft size={16} />
+            <span>{mode === "buynow" ? "Back to Product" : "Back to Cart"}</span>
           </button>
-          <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1.5 rounded-full text-xs font-bold text-emerald-400">
-            <Lock size={13} /> 256-Bit TLS Encrypted Gateway
+
+          <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full text-xs font-semibold text-emerald-400">
+            <Lock size={14} />
+            <span>256-Bit SSL Secured</span>
           </div>
         </div>
 
-        {/* Alert / Error Banner */}
+        {/* Error banner if payment retry needed */}
         {errorMessage && (
-          <div className="mb-6 p-4 bg-rose-500/15 border border-rose-500/30 rounded-2xl flex items-start gap-3 text-rose-300 animate-fade-in">
-            <AlertCircle className="text-rose-400 shrink-0 mt-0.5" size={20} />
+          <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-start gap-3 text-rose-400">
+            <AlertCircle className="shrink-0 mt-0.5" size={18} />
             <div>
-              <p className="font-bold text-sm">Payment Status</p>
-              <p className="text-xs mt-0.5">{errorMessage}</p>
+              <h4 className="text-sm font-bold">Payment Notice</h4>
+              <p className="text-xs text-rose-300 mt-0.5">{errorMessage}</p>
             </div>
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column - Secure Checkout Card */}
-          <div className="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
-            {/* Card Header */}
-            <div className="bg-gradient-to-r from-indigo-900/60 via-slate-900 to-violet-900/40 p-6 sm:p-8 border-b border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
-                  <ShieldCheck size={26} />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-black text-white">
-                    Secure Checkout
-                  </h1>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Payments securely processed by Razorpay
-                  </p>
-                </div>
+          {/* Main Action Area */}
+          <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+            <div>
+              <h1 className="text-2xl font-black text-white">
+                {mode === "buynow" ? "Instant Buy Now Checkout" : "Confirm & Pay"}
+              </h1>
+              <p className="text-xs text-slate-400 mt-1">
+                {mode === "buynow"
+                  ? "Direct single-item checkout via Razorpay Gateway"
+                  : "Review your marketplace order and complete secure payment via Razorpay Gateway"}
+              </p>
+            </div>
+
+            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Total Amount Payable</span>
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  <Check size={14} /> Verified Price
+                </span>
+              </div>
+              <div className="text-3xl font-black text-white tracking-tight">
+                ₹{orderData.amount_inr?.toLocaleString("en-IN")}
+              </div>
+              <div className="text-[11px] text-slate-500">
+                Order Reference: <span className="font-mono text-slate-400">{orderData.razorpay_order_id}</span>
               </div>
             </div>
 
-            {/* Card Body */}
-            <div className="p-6 sm:p-8 space-y-6">
-              {/* Total Payable Box */}
-              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-5 flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Total Payable Amount
-                  </span>
-                  <p className="text-2xl sm:text-3xl font-black text-white mt-1">
-                    ₹{orderData.amount_inr?.toLocaleString("en-IN")}
-                  </p>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                  <CreditCard size={20} />
-                </div>
-              </div>
-
-              {/* Supported Methods List */}
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
-                  Supported Payment Methods
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {supportedMethods.map((method) => (
-                    <div
-                      key={method}
-                      className="bg-slate-950/60 border border-slate-800/80 rounded-xl px-3.5 py-2.5 flex items-center gap-2 text-xs font-bold text-slate-200"
-                    >
-                      <Check
-                        size={14}
-                        className="text-emerald-400 shrink-0"
-                      />
-                      <span>{method}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* One Large Proceed Button */}
+            <div className="space-y-4 pt-2">
               <button
                 onClick={openRazorpay}
                 disabled={processing}
-                className="w-full py-4 px-6 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:opacity-50 text-white font-extrabold text-base rounded-2xl shadow-xl shadow-indigo-600/25 active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+                className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50 text-white font-extrabold text-base rounded-2xl shadow-lg shadow-indigo-600/30 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {processing ? (
                   <>
                     <Loader2 size={20} className="animate-spin" />
-                    <span>Verifying Payment...</span>
+                    <span>Verifying Cryptographic Signature...</span>
                   </>
                 ) : (
                   <>
-                    <ShieldCheck size={20} />
-                    <span>Proceed to Secure Payment</span>
+                    <CreditCard size={20} />
+                    <span>Pay ₹{orderData.amount_inr?.toLocaleString("en-IN")} Now</span>
                   </>
                 )}
               </button>
 
-              <p className="text-[11px] text-slate-500 text-center">
-                Clicking the button above opens the official Razorpay Checkout window where you can choose your preferred payment method.
-              </p>
+              <div className="flex items-center justify-center gap-6 text-[11px] text-slate-400 pt-2">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck size={14} className="text-indigo-400" />
+                  <span>Razorpay Verified</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Lock size={14} className="text-emerald-400" />
+                  <span>Encrypted Transaction</span>
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Right Column - Order Summary Card */}
+          {/* Sidebar Order Summary */}
           <div className="lg:col-span-5 bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl sticky top-24">
             <h2 className="text-base font-extrabold text-white mb-4 pb-3 border-b border-slate-800 flex items-center justify-between">
               <span>Order Summary</span>
@@ -287,7 +342,7 @@ export default function PaymentGateway() {
 
             {/* Item List */}
             <div className="space-y-3 mb-6 max-h-64 overflow-y-auto pr-1">
-              {cartItems.map((item) => (
+              {itemsToDisplay.map((item) => (
                 <div
                   key={item.id}
                   className="flex items-center justify-between text-xs py-2 border-b border-slate-800/60"

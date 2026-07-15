@@ -3,7 +3,7 @@ import uuid
 import json
 from datetime import datetime, timezone, timedelta
 import razorpay
-from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Form, status
+from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Form, status, Body
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text, or_, and_, func, case
 from sqlalchemy.orm import joinedload
@@ -21,7 +21,7 @@ from auth import hash_password, verify_password, create_access_token
 from jose import jwt, JWTError
 from auth import SECRET_KEY, ALGORITHM
 from fastapi.staticfiles import StaticFiles
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 from payment import razorpay_client
 
@@ -852,7 +852,15 @@ def get_cart(user_id: int = Depends(get_current_user_id)):
         .all()
     )
 
-    result = [serialize_product(p) for p in products]
+    wishlist_ids = {
+        w.product_id
+        for w in db.query(Wishlist.product_id).filter(Wishlist.user_id == user_id).all()
+    }
+
+    result = [
+        serialize_product(p, is_wishlisted=(p.id in wishlist_ids))
+        for p in products
+    ]
 
     db.close()
     return result
@@ -916,6 +924,30 @@ def remove_from_cart(
     db.close()
 
     return {"message": "Product removed from cart"}
+
+
+@app.delete("/cart/remove-sold")
+def remove_sold_from_cart(user_id: int = Depends(get_current_user_id)):
+    db = SessionLocal()
+    try:
+        cart_entries = db.query(Cart).filter(Cart.user_id == user_id).all()
+        product_ids = [entry.product_id for entry in cart_entries]
+        sold_products = db.query(Product).filter(
+            Product.id.in_(product_ids),
+            or_(Product.is_sold == True, Product.status == "sold")
+        ).all()
+        sold_ids = [p.id for p in sold_products]
+
+        if sold_ids:
+            db.query(Cart).filter(
+                Cart.user_id == user_id,
+                Cart.product_id.in_(sold_ids)
+            ).delete(synchronize_session=False)
+            db.commit()
+
+        return {"message": "Removed sold items from cart", "removed_ids": sold_ids}
+    finally:
+        db.close()
 
 
 @app.delete("/cart/")
@@ -1037,9 +1069,67 @@ def test_token(token: str):
 # ─── Razorpay Checkout & Orders ───────────────────────────────────
 
 @app.post("/checkout/initiate")
-def initiate_checkout(current_user: User = Depends(get_current_user)):
+def initiate_checkout(
+    data: Optional[Dict[str, Any]] = Body(None),
+    current_user: User = Depends(get_current_user)
+):
     db = SessionLocal()
     try:
+        mode = data.get("mode") if data else None
+        product_id = data.get("product_id") if data else None
+
+        if mode == "buynow" and product_id:
+            product = db.query(Product).filter(Product.id == int(product_id)).first()
+            if not product:
+                raise HTTPException(status_code=404, detail={"message": "Product not found.", "invalid_products": [int(product_id)]})
+            if product.is_sold or product.status == "sold":
+                raise HTTPException(status_code=400, detail={"message": "Some products in your cart are no longer available.", "invalid_products": [int(product_id)]})
+            if product.user_id == current_user.id:
+                raise HTTPException(status_code=400, detail={"message": "You cannot purchase your own product.", "invalid_products": [int(product_id)]})
+
+            products = [product]
+            total_amount = int(product.price)
+            amount_paise = total_amount * 100
+
+            try:
+                client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+                rzp_order = client.order.create({
+                    "amount": amount_paise,
+                    "currency": "INR",
+                    "receipt": f"bn_{current_user.id}_{uuid.uuid4().hex[:8]}",
+                    "payment_capture": 1
+                })
+                razorpay_order_id = rzp_order["id"]
+                ret_amount = rzp_order["amount"]
+                ret_currency = rzp_order.get("currency", "INR")
+            except Exception as e:
+                print(f"[Razorpay Notice] Fallback order due to: {e}")
+                razorpay_order_id = f"order_sim_bn_{uuid.uuid4().hex[:12]}"
+                ret_amount = amount_paise
+                ret_currency = "INR"
+
+            seller = db.query(User).filter(User.id == product.user_id).first() if product.user_id else None
+            seller_display_name = (seller.username or seller.email.split("@")[0]) if seller else (product.seller_name or "Seller")
+
+            return {
+                "razorpay_order_id": razorpay_order_id,
+                "razorpay_key_id": RAZORPAY_KEY_ID,
+                "amount": ret_amount,
+                "currency": ret_currency,
+                "amount_inr": total_amount,
+                "key": RAZORPAY_KEY_ID,
+                "id": razorpay_order_id,
+                "mode": "buynow",
+                "product_id": product.id,
+                "items": [{
+                    "id": product.id,
+                    "title": product.title,
+                    "price": product.price,
+                    "seller_name": seller_display_name,
+                    "quantity": 1
+                }]
+            }
+
         cart_entries = db.query(Cart).filter(Cart.user_id == current_user.id).all()
         if not cart_entries:
             raise HTTPException(status_code=400, detail="Your cart is empty.")
@@ -1048,6 +1138,22 @@ def initiate_checkout(current_user: User = Depends(get_current_user)):
         products = db.query(Product).filter(Product.id.in_(product_ids)).all()
         if not products:
             raise HTTPException(status_code=400, detail="No valid products found in cart.")
+
+        product_map = {p.id: p for p in products}
+        invalid_products = []
+        for pid in product_ids:
+            p = product_map.get(pid)
+            if not p or getattr(p, "is_sold", False) or getattr(p, "status", "") == "sold":
+                invalid_products.append(pid)
+
+        if invalid_products:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "Some products in your cart are no longer available.",
+                    "invalid_products": invalid_products
+                }
+            )
 
         # Backend calculates total amount using prices stored in PostgreSQL
         total_amount = sum(int(p.price) for p in products)
@@ -1261,13 +1367,22 @@ def verify_checkout(
 ):
     db = SessionLocal()
     try:
-        cart_entries = db.query(Cart).filter(Cart.user_id == current_user.id).all()
-        if not cart_entries:
-            raise HTTPException(status_code=400, detail="Cart is empty.")
+        if data.mode == "buynow" and data.product_id:
+            product = db.query(Product).filter(Product.id == int(data.product_id)).first()
+            if not product:
+                raise HTTPException(status_code=404, detail="Product not found.")
+            if product.is_sold or product.status == "sold":
+                raise HTTPException(status_code=400, detail="This product has already been sold.")
+            products = [product]
+            total_amount = int(product.price)
+        else:
+            cart_entries = db.query(Cart).filter(Cart.user_id == current_user.id).all()
+            if not cart_entries:
+                raise HTTPException(status_code=400, detail="Cart is empty.")
 
-        product_ids = [entry.product_id for entry in cart_entries]
-        products = db.query(Product).filter(Product.id.in_(product_ids)).all()
-        total_amount = sum(int(p.price) for p in products)
+            product_ids = [entry.product_id for entry in cart_entries]
+            products = db.query(Product).filter(Product.id.in_(product_ids)).all()
+            total_amount = sum(int(p.price) for p in products)
 
         is_valid = False
         try:
@@ -1291,20 +1406,23 @@ def verify_checkout(
                 is_valid = True
 
         if not is_valid:
-            failed_order = Order(
-                user_id=current_user.id,
-                total_amount=total_amount,
-                status="FAILED",
-                razorpay_order_id=data.razorpay_order_id,
-                razorpay_payment_id=data.razorpay_payment_id,
-                razorpay_signature=data.razorpay_signature,
-            )
-            db.add(failed_order)
-            db.commit()
-            raise HTTPException(status_code=400, detail="Payment signature verification failed. Cart kept unchanged.")
+            if data.mode == "buynow":
+                raise HTTPException(status_code=400, detail="Payment signature verification failed. No order was created and product remains available.")
+            else:
+                failed_order = Order(
+                    user_id=current_user.id,
+                    total_amount=total_amount,
+                    status="FAILED",
+                    razorpay_order_id=data.razorpay_order_id,
+                    razorpay_payment_id=data.razorpay_payment_id,
+                    razorpay_signature=data.razorpay_signature,
+                )
+                db.add(failed_order)
+                db.commit()
+                raise HTTPException(status_code=400, detail="Payment signature verification failed. Cart kept unchanged.")
 
         payment_rec = Payment(
-            payment_type="checkout",
+            payment_type="buynow" if data.mode == "buynow" else "checkout",
             amount=total_amount,
             currency="INR",
             payment_gateway="Razorpay",
@@ -1353,7 +1471,8 @@ def verify_checkout(
             p.status = "sold"
             p.is_sold = True
 
-        db.query(Cart).filter(Cart.user_id == current_user.id).delete()
+        if data.mode != "buynow":
+            db.query(Cart).filter(Cart.user_id == current_user.id).delete()
         db.commit()
 
         return {
@@ -1374,6 +1493,9 @@ def payment_failure(
 ):
     db = SessionLocal()
     try:
+        if data.mode == "buynow":
+            return {"success": False, "message": "Buy Now payment cancelled or failed. Product remains available."}
+
         cart_entries = db.query(Cart).filter(Cart.user_id == current_user.id).all()
         product_ids = [entry.product_id for entry in cart_entries]
         products = db.query(Product).filter(Product.id.in_(product_ids)).all()

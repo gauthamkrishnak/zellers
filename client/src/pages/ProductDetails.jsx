@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import {
   ArrowLeft,
@@ -11,6 +11,9 @@ import {
   UserCheck,
   Tag,
   Megaphone,
+  CreditCard,
+  ShoppingBag,
+  AlertCircle,
 } from "lucide-react";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
@@ -21,6 +24,7 @@ import SellerInfo from "../components/SellerInfo";
 function ProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { refreshWishlist } = useWishlist();
   const { cartItems, addToCart, setIsCartOpen } = useCart();
   const { getAuthHeaders, isAuthenticated } = useAuth();
@@ -68,6 +72,21 @@ function ProductDetails() {
     }
   };
 
+  const handleBuyNow = () => {
+    if (!isAuthenticated) {
+      alert("Please login to purchase items.");
+      navigate("/login");
+      return;
+    }
+    const isSoldOut = Boolean(product?.is_sold || product?.status === "sold");
+    if (!product || isSoldOut) {
+      return;
+    }
+    navigate(`/checkout/payment?mode=buynow&product_id=${product.id}`, {
+      state: { buyNowProduct: product, buyNowMode: true },
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32">
@@ -110,6 +129,16 @@ function ProductDetails() {
         />
         <span>Back to listings</span>
       </button>
+
+      {location.state?.buyNowError && (
+        <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3 text-rose-800 animate-fade-in shadow-sm">
+          <AlertCircle className="text-rose-600 shrink-0 mt-0.5" size={20} />
+          <div>
+            <p className="font-bold text-sm">Buy Now Notice</p>
+            <p className="text-xs mt-0.5">{location.state.buyNowError}</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 flex flex-col gap-6">
@@ -229,46 +258,59 @@ function ProductDetails() {
               </div>
             )}
 
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-2">
               {isSold ? (
                 <button
                   disabled
-                  className="flex-1 bg-slate-200 text-slate-500 font-bold py-3.5 px-6 rounded-2xl cursor-not-allowed border border-slate-300"
+                  className="flex-1 bg-slate-200 text-slate-500 font-bold py-3.5 px-6 rounded-2xl cursor-not-allowed border border-slate-300 text-center text-sm"
                 >
                   Sold Out
                 </button>
               ) : cartItems.some((item) => item.id === product.id) ? (
                 <button
                   onClick={() => setIsCartOpen(true)}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-emerald-600/10 hover:shadow-emerald-600/20 active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-emerald-600/10 hover:shadow-emerald-600/20 active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer text-sm"
                 >
-                  Go to Cart
+                  <ShoppingBag size={18} />
+                  <span>Go to Cart</span>
                 </button>
               ) : (
                 <button
                   onClick={() => addToCart(product)}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
+                  className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-slate-900/10 hover:shadow-slate-900/20 active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer text-sm"
                 >
-                  Add to Cart
+                  <ShoppingBag size={18} />
+                  <span>Add to Cart</span>
+                </button>
+              )}
+
+              {isSold ? (
+                <button
+                  disabled
+                  className="flex-1 bg-slate-200 text-slate-500 font-bold py-3.5 px-6 rounded-2xl cursor-not-allowed border border-slate-300 text-center text-sm"
+                >
+                  Sold Out
+                </button>
+              ) : (
+                <button
+                  onClick={handleBuyNow}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/30 active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer text-sm"
+                >
+                  <CreditCard size={18} />
+                  <span>Buy Now</span>
                 </button>
               )}
 
               <button
                 onClick={handleWishlist}
-                className="border border-slate-200/80 p-3.5 rounded-2xl transition-all duration-200 bg-slate-50 hover:bg-slate-100 active:scale-90 cursor-pointer"
+                className="border border-slate-200/80 p-3.5 rounded-2xl transition-all duration-200 bg-slate-50 hover:bg-slate-100 active:scale-90 cursor-pointer flex items-center justify-center shrink-0"
+                title="Save to Wishlist"
               >
                 <Heart
                   size={20}
                   fill={isWishlisted ? "currentColor" : "none"}
                   className={isWishlisted ? "text-rose-500" : "text-slate-600"}
                 />
-              </button>
-            </div>
-
-            <div className="flex gap-3 text-sm font-semibold">
-              <button className="flex-1 border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 py-3 rounded-xl flex items-center justify-center gap-2 transition cursor-pointer bg-white">
-                <Phone size={16} />
-                <span>Contact</span>
               </button>
             </div>
           </div>

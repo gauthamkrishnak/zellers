@@ -31,7 +31,10 @@ function App() {
           <Route path="/checkout/payment" element={<PaymentGateway />} />
           <Route element={<Layout />}>
             <Route path="/" element={<Home />} />
+            <Route path="/product/:id" element={<ProductDetails />} />
             <Route path="/product/:id/:title" element={<ProductDetails />} />
+            <Route path="/products/:id" element={<ProductDetails />} />
+            <Route path="/products/:id/:title" element={<ProductDetails />} />
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/my-listings" element={<MyListings />} />
             <Route path="/my-purchases" element={<MyPurchases />} />
