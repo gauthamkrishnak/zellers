@@ -27,7 +27,6 @@ function ProductCard(props) {
 
   const handleWishlistClick = async (e) => {
     e.stopPropagation();
-    if (isSold) return;
 
     if (!isAuthenticated) {
       alert("Please login to save items to your wishlist.");
@@ -96,12 +95,7 @@ function ProductCard(props) {
 
         <button
           onClick={handleWishlistClick}
-          disabled={isSold}
-          className={`absolute top-4 right-4 bg-white/90 p-2.5 rounded-full shadow-md backdrop-blur-xs transition-all duration-200 z-30 ${
-            isSold
-              ? "cursor-not-allowed opacity-50"
-              : "hover:bg-white cursor-pointer active:scale-90"
-          }`}
+          className="absolute top-4 right-4 bg-white/90 p-2.5 rounded-full shadow-md backdrop-blur-xs transition-all duration-200 z-30 hover:bg-white cursor-pointer active:scale-90"
         >
           <Heart
             size={18}

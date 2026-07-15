@@ -70,4 +70,19 @@ class OrderItem(Base):
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     price = Column(Integer, nullable=False)
-    title = Column(String, nullable=True)
+    title = Column(String, nullable=True)
+
+    # Immutable Purchase Snapshots
+    snapshot_product_title = Column(String, nullable=True)
+    snapshot_brand = Column(String, nullable=True)
+    snapshot_category = Column(String, nullable=True)
+    snapshot_condition = Column(String, nullable=True)
+    snapshot_price_paid = Column(Integer, nullable=True)
+    snapshot_original_price = Column(Integer, nullable=True)
+    snapshot_location = Column(String, nullable=True)
+    snapshot_description = Column(String, nullable=True)
+    snapshot_primary_image = Column(String, nullable=True)
+    snapshot_image_urls = Column(String, nullable=True)  # JSON string of image URLs
+    snapshot_seller_name = Column(String, nullable=True)
+    snapshot_seller_id = Column(Integer, nullable=True)
+    snapshot_purchase_time = Column(String, nullable=True)

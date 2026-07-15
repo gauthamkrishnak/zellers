@@ -13,6 +13,8 @@ import ScrollToTop from "./components/scrolltotop";
 import Layout from "./pages/Layout";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
+import MyPurchases from "./pages/MyPurchases";
+import PurchaseDetails from "./pages/PurchaseDetails";
 
 function App() {
   return (
@@ -32,6 +34,11 @@ function App() {
             <Route path="/product/:id/:title" element={<ProductDetails />} />
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/my-listings" element={<MyListings />} />
+            <Route path="/my-purchases" element={<MyPurchases />} />
+            <Route
+              path="/my-purchases/:orderId/:productId"
+              element={<PurchaseDetails />}
+            />
             <Route path="/edit-product/:id" element={<EditProduct />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/order-success" element={<OrderSuccess />} />

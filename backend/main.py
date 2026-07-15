@@ -1,5 +1,7 @@
 import os
 import uuid
+import json
+from datetime import datetime
 import razorpay
 from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Form, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -61,9 +63,54 @@ with engine.connect() as conn:
                     text("UPDATE products SET brand = :brand WHERE id = :id AND (brand IS NULL OR brand = '')"),
                     {"brand": item["brand"], "id": item["id"]}
                 )
+
+        # Add immutable purchase snapshot columns to order_items table
+        snapshot_cols = [
+            ("snapshot_product_title", "VARCHAR NULL"),
+            ("snapshot_brand", "VARCHAR NULL"),
+            ("snapshot_category", "VARCHAR NULL"),
+            ("snapshot_condition", "VARCHAR NULL"),
+            ("snapshot_price_paid", "INTEGER NULL"),
+            ("snapshot_original_price", "INTEGER NULL"),
+            ("snapshot_location", "VARCHAR NULL"),
+            ("snapshot_description", "VARCHAR NULL"),
+            ("snapshot_primary_image", "VARCHAR NULL"),
+            ("snapshot_image_urls", "VARCHAR NULL"),
+            ("snapshot_seller_name", "VARCHAR NULL"),
+            ("snapshot_seller_id", "INTEGER NULL"),
+            ("snapshot_purchase_time", "VARCHAR NULL"),
+        ]
+        for col_name, col_type in snapshot_cols:
+            conn.execute(text(f"ALTER TABLE order_items ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
+
         conn.commit()
     except Exception as e:
         print("Migration note:", e)
+
+# Backfill existing order items without snapshots
+try:
+    with SessionLocal() as db_bf:
+        items_to_bf = db_bf.query(OrderItem).filter(OrderItem.snapshot_product_title == None).all()
+        for itm in items_to_bf:
+            p = db_bf.query(Product).filter(Product.id == itm.product_id).first()
+            seller = db_bf.query(User).filter(User.id == p.user_id).first() if (p and p.user_id) else None
+            itm.snapshot_product_title = itm.title or (p.title if p else "Purchased Item")
+            itm.snapshot_brand = (p.brand if p and p.brand else "Generic")
+            itm.snapshot_category = (p.type if p and p.type else "Others")
+            itm.snapshot_condition = (p.condition if p and p.condition else "Good")
+            itm.snapshot_price_paid = itm.price
+            itm.snapshot_original_price = (p.price if p else itm.price)
+            itm.snapshot_location = (p.location if p and p.location else "India")
+            itm.snapshot_description = (p.desc if p and p.desc else "")
+            itm.snapshot_primary_image = (p.image if p and p.image else "")
+            itm.snapshot_image_urls = json.dumps([p.image] if (p and p.image) else [])
+            itm.snapshot_seller_name = (seller.username or seller.email.split("@")[0]) if seller else "Seller"
+            itm.snapshot_seller_id = p.user_id if p else None
+            itm.snapshot_purchase_time = datetime.utcnow().isoformat()
+        if items_to_bf:
+            db_bf.commit()
+except Exception as e_bf:
+    print("Backfill note:", e_bf)
 
 RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "rzp_test_1DP5mmOlF5G5ag")
 RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "sample_test_secret_key_12345")
@@ -593,7 +640,16 @@ def get_wishlist(user_id: int = Depends(get_current_user_id)):
         .all()
     )
 
-    result = [serialize_product(p, is_wishlisted=True) for p in products]
+    # Sort available products first (is_sold == False), sold products last (is_sold == True)
+    sorted_products = sorted(
+        products,
+        key=lambda p: (
+            bool(getattr(p, "is_sold", False)) or (getattr(p, "status", "") == "sold"),
+            p.id,
+        ),
+    )
+
+    result = [serialize_product(p, is_wishlisted=True) for p in sorted_products]
 
     db.close()
     return result
@@ -628,18 +684,7 @@ def toggle_wishlist(
         db.add(Wishlist(user_id=user_id, product_id=product_id))
         is_wishlisted = True
 
-    result = {
-        "id": product.id,
-        "title": product.title,
-        "price": product.price,
-        "type": product.type,
-        "location": product.location,
-        "listed": product.listed,
-        "image": product.image,
-        "desc": product.desc,
-        "status": getattr(product, "status", "available") or "available",
-        "is_wishlisted": is_wishlisted,
-    }
+    result = serialize_product(product, is_wishlisted=is_wishlisted)
 
     db.commit()
     db.close()
@@ -959,11 +1004,25 @@ def verify_checkout(
         db.refresh(order)
 
         for p in products:
+            seller = db.query(User).filter(User.id == p.user_id).first() if p.user_id else None
             item = OrderItem(
                 order_id=order.id,
                 product_id=p.id,
                 price=p.price,
                 title=p.title,
+                snapshot_product_title=p.title,
+                snapshot_brand=getattr(p, "brand", None) or "Generic",
+                snapshot_category=p.type or "Others",
+                snapshot_condition=getattr(p, "condition", "Good") or "Good",
+                snapshot_price_paid=p.price,
+                snapshot_original_price=p.price,
+                snapshot_location=p.location or "India",
+                snapshot_description=p.desc or "",
+                snapshot_primary_image=p.image or "",
+                snapshot_image_urls=json.dumps([p.image] if p.image else []),
+                snapshot_seller_name=(seller.username or seller.email.split("@")[0]) if seller else "Seller",
+                snapshot_seller_id=p.user_id,
+                snapshot_purchase_time=datetime.utcnow().isoformat(),
             )
             db.add(item)
             p.status = "sold"
@@ -1011,6 +1070,90 @@ def payment_failure(
         db.close()
 
 
+@app.get("/orders/my-purchases")
+def get_my_purchases(current_user: User = Depends(get_current_user)):
+    db = SessionLocal()
+    try:
+        orders = db.query(Order).filter(Order.user_id == current_user.id).order_by(Order.id.desc()).all()
+        purchases = []
+        for o in orders:
+            items = db.query(OrderItem).filter(OrderItem.order_id == o.id).all()
+            for itm in items:
+                p = db.query(Product).filter(Product.id == itm.product_id).first()
+                if p:
+                    is_sold = bool(getattr(p, "is_sold", False)) or (getattr(p, "status", "") == "sold")
+                    current_status = "sold" if is_sold else (getattr(p, "status", "available") or "available")
+                    current_image = p.image or (itm.snapshot_primary_image or "")
+                    product_exists = True
+                else:
+                    is_sold = True
+                    current_status = "deleted"
+                    current_image = itm.snapshot_primary_image or ""
+                    product_exists = False
+
+                snapshot_title = itm.snapshot_product_title or itm.title or (p.title if p else "Purchased Item")
+                snapshot_brand = itm.snapshot_brand or (getattr(p, "brand", None) if p else "Generic") or "Generic"
+                snapshot_category = itm.snapshot_category or (p.type if p else "Others") or "Others"
+                snapshot_condition = itm.snapshot_condition or (getattr(p, "condition", "Good") if p else "Good") or "Good"
+                snapshot_price = itm.snapshot_price_paid if itm.snapshot_price_paid is not None else itm.price
+                snapshot_orig_price = itm.snapshot_original_price if itm.snapshot_original_price is not None else (p.price if p else itm.price)
+                snapshot_location = itm.snapshot_location or (p.location if p else "India") or "India"
+                snapshot_desc = itm.snapshot_description or (p.desc if p else "") or ""
+                snapshot_image = itm.snapshot_primary_image or (p.image if p else "") or ""
+                snapshot_images_str = itm.snapshot_image_urls or json.dumps([snapshot_image] if snapshot_image else [])
+                snapshot_seller = itm.snapshot_seller_name or "Seller"
+                if not itm.snapshot_seller_name and p and p.user_id:
+                    s_user = db.query(User).filter(User.id == p.user_id).first()
+                    if s_user:
+                        snapshot_seller = s_user.username or s_user.email.split("@")[0]
+                snapshot_time = itm.snapshot_purchase_time or o.created_at or datetime.utcnow().isoformat()
+
+                o_status = o.status or "Delivered"
+                if o_status == "SUCCESS":
+                    o_status = "Delivered"
+
+                purchases.append({
+                    "order_id": o.id,
+                    "order_date": o.created_at or snapshot_time,
+                    "payment_id": o.razorpay_payment_id or o.razorpay_order_id or f"PAY_{o.id}",
+                    "payment_method": "Razorpay",
+                    "payment_status": "SUCCESS" if o.status in ["SUCCESS", "Delivered"] else o.status,
+                    "order_status": o_status,
+                    "product_id": itm.product_id,
+                    "product_title": snapshot_title,
+                    "brand": snapshot_brand,
+                    "category": snapshot_category,
+                    "condition": snapshot_condition,
+                    "current_product_status": current_status,
+                    "current_product_image": current_image,
+                    "purchased_price": snapshot_price,
+                    "original_price": snapshot_orig_price,
+                    "quantity": 1,
+                    "seller_id": itm.snapshot_seller_id or (p.user_id if p else None),
+                    "seller_name": snapshot_seller,
+                    "seller_profile_image": None,
+                    "location": snapshot_location,
+                    "snapshot_product_title": snapshot_title,
+                    "snapshot_brand": snapshot_brand,
+                    "snapshot_category": snapshot_category,
+                    "snapshot_condition": snapshot_condition,
+                    "snapshot_price_paid": snapshot_price,
+                    "snapshot_original_price": snapshot_orig_price,
+                    "snapshot_location": snapshot_location,
+                    "snapshot_description": snapshot_desc,
+                    "snapshot_primary_image": snapshot_image,
+                    "snapshot_image_urls": snapshot_images_str,
+                    "snapshot_seller_name": snapshot_seller,
+                    "snapshot_seller_id": itm.snapshot_seller_id or (p.user_id if p else None),
+                    "snapshot_purchase_time": snapshot_time,
+                    "product_exists": product_exists,
+                    "is_sold": is_sold,
+                })
+        return purchases
+    finally:
+        db.close()
+
+
 @app.get("/orders/")
 def get_orders(current_user: User = Depends(get_current_user)):
     db = SessionLocal()
@@ -1032,6 +1175,19 @@ def get_orders(current_user: User = Depends(get_current_user)):
                         "product_id": i.product_id,
                         "price": i.price,
                         "title": i.title,
+                        "snapshot_product_title": i.snapshot_product_title,
+                        "snapshot_brand": i.snapshot_brand,
+                        "snapshot_category": i.snapshot_category,
+                        "snapshot_condition": i.snapshot_condition,
+                        "snapshot_price_paid": i.snapshot_price_paid,
+                        "snapshot_original_price": i.snapshot_original_price,
+                        "snapshot_location": i.snapshot_location,
+                        "snapshot_description": i.snapshot_description,
+                        "snapshot_primary_image": i.snapshot_primary_image,
+                        "snapshot_image_urls": i.snapshot_image_urls,
+                        "snapshot_seller_name": i.snapshot_seller_name,
+                        "snapshot_seller_id": i.snapshot_seller_id,
+                        "snapshot_purchase_time": i.snapshot_purchase_time,
                     }
                     for i in items
                 ]
@@ -1062,6 +1218,19 @@ def get_order(order_id: int, current_user: User = Depends(get_current_user)):
                     "product_id": i.product_id,
                     "price": i.price,
                     "title": i.title,
+                    "snapshot_product_title": i.snapshot_product_title,
+                    "snapshot_brand": i.snapshot_brand,
+                    "snapshot_category": i.snapshot_category,
+                    "snapshot_condition": i.snapshot_condition,
+                    "snapshot_price_paid": i.snapshot_price_paid,
+                    "snapshot_original_price": i.snapshot_original_price,
+                    "snapshot_location": i.snapshot_location,
+                    "snapshot_description": i.snapshot_description,
+                    "snapshot_primary_image": i.snapshot_primary_image,
+                    "snapshot_image_urls": i.snapshot_image_urls,
+                    "snapshot_seller_name": i.snapshot_seller_name,
+                    "snapshot_seller_id": i.snapshot_seller_id,
+                    "snapshot_purchase_time": i.snapshot_purchase_time,
                 }
                 for i in items
             ]

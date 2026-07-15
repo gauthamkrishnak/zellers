@@ -266,14 +266,22 @@ export default function Account() {
           )}
         </div>
 
-        {/* Actions */}
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <button
-            onClick={() => navigate("/my-listings")}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl font-bold text-sm transition-all cursor-pointer shadow-lg shadow-indigo-600/20"
-          >
-            <Package size={16} /> Manage My Listings
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => navigate("/my-listings")}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl font-bold text-sm transition-all cursor-pointer shadow-lg shadow-indigo-600/20"
+            >
+              <Package size={16} /> Manage My Listings
+            </button>
+
+            <button
+              onClick={() => navigate("/my-purchases")}
+              className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-2xl font-bold text-sm transition-all cursor-pointer shadow-lg shadow-violet-600/20"
+            >
+              <ShoppingBag size={16} /> My Purchases
+            </button>
+          </div>
 
           <button
             onClick={() => {

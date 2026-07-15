@@ -65,7 +65,7 @@ export default function MyListings() {
         `http://127.0.0.1:8000/products/${deleteCandidate.id}`,
         {
           headers: getAuthHeaders(),
-        }
+        },
       );
       setListings((prev) => prev.filter((p) => p.id !== deleteCandidate.id));
       setSuccessMessage("Listing deleted successfully!");
@@ -73,7 +73,8 @@ export default function MyListings() {
       setTimeout(() => setSuccessMessage(""), 4000);
     } catch (err) {
       alert(
-        err.response?.data?.detail || "Failed to delete listing. Please try again."
+        err.response?.data?.detail ||
+          "Failed to delete listing. Please try again.",
       );
     } finally {
       setDeleting(false);
@@ -171,7 +172,8 @@ export default function MyListings() {
           </h2>
 
           <p className="text-slate-500 text-sm mt-2 mb-8 leading-relaxed">
-            Ready to turn your unused items into cash? Post your first product in seconds!
+            Ready to turn your unused items into cash? Post your first product
+            in seconds!
           </p>
 
           <button
@@ -203,9 +205,10 @@ export default function MyListings() {
                         SOLD
                       </span>
                     ) : (
-                      <span className="bg-emerald-600 text-white font-extrabold text-[11px] uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
-                        AVAILABLE
-                      </span>
+                      <span />
+                      // <span className="bg-emerald-600 text-white font-extrabold text-[11px] uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
+                      //   AVAILABLE
+                      // </span>
                     )}
 
                     {item.condition === "Brand New" ? (
@@ -276,7 +279,11 @@ export default function MyListings() {
                       <button
                         onClick={() => navigate(`/edit-product/${item.id}`)}
                         disabled={isSold}
-                        title={isSold ? "Sold items cannot be edited" : "Edit listing"}
+                        title={
+                          isSold
+                            ? "Sold items cannot be edited"
+                            : "Edit listing"
+                        }
                         className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
                           isSold
                             ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
@@ -315,7 +322,11 @@ export default function MyListings() {
               Delete Listing?
             </h3>
             <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-              Are you sure you want to delete <span className="font-bold text-slate-700">"{deleteCandidate.title}"</span>? This action cannot be undone.
+              Are you sure you want to delete{" "}
+              <span className="font-bold text-slate-700">
+                "{deleteCandidate.title}"
+              </span>
+              ? This action cannot be undone.
             </p>
 
             <div className="flex items-center justify-end gap-3 mt-6">

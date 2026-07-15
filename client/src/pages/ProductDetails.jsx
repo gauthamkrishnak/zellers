@@ -235,12 +235,7 @@ function ProductDetails() {
 
               <button
                 onClick={handleWishlist}
-                disabled={isSold}
-                className={`border border-slate-200/80 p-3.5 rounded-2xl transition-all duration-200 ${
-                  isSold
-                    ? "bg-slate-100 cursor-not-allowed opacity-50"
-                    : "bg-slate-50 hover:bg-slate-100 active:scale-90 cursor-pointer"
-                }`}
+                className="border border-slate-200/80 p-3.5 rounded-2xl transition-all duration-200 bg-slate-50 hover:bg-slate-100 active:scale-90 cursor-pointer"
               >
                 <Heart
                   size={20}

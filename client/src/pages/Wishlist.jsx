@@ -18,7 +18,13 @@ function Wishlist() {
       const response = await axios.get("http://127.0.0.1:8000/wishlist/", {
         headers: getAuthHeaders(),
       });
-      setWishlistProducts(response.data);
+      const sorted = [...response.data].sort((a, b) => {
+        const aSold = Boolean(a.is_sold || a.status === "sold");
+        const bSold = Boolean(b.is_sold || b.status === "sold");
+        if (aSold === bSold) return 0;
+        return aSold ? 1 : -1;
+      });
+      setWishlistProducts(sorted);
     } catch (error) {
       console.error("Error fetching wishlist:", error);
     } finally {

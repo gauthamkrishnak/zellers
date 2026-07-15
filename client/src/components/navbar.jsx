@@ -8,12 +8,14 @@ import {
   ShoppingCart,
   Settings,
   Package,
+  ShoppingBag,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useWishlist } from "../context/WishlistContext";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import SellItemModal from "./SellItemModal";
 
 function Navbar({ searchTerm, setSearchTerm }) {
@@ -64,6 +66,17 @@ function Navbar({ searchTerm, setSearchTerm }) {
         <button
           onClick={() => {
             setIsProfileOpen(false);
+            navigate("/my-purchases");
+          }}
+          className="w-full flex items-center gap-3 px-5 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors cursor-pointer"
+        >
+          <ShoppingBag size={17} />
+          <span>My Purchases</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setIsProfileOpen(false);
             navigate("/wishlist");
           }}
           className="w-full flex items-center gap-3 px-5 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors cursor-pointer"
@@ -87,6 +100,23 @@ function Navbar({ searchTerm, setSearchTerm }) {
 
   const profileRefDesktop = useRef(null);
   const profileRefMobile = useRef(null);
+  const searchInputRef = useRef(null);
+
+  const handleClearSearch = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setSearchTerm("");
+    searchInputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Escape" && searchTerm) {
+      e.preventDefault();
+      handleClearSearch();
+    }
+  };
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -183,17 +213,39 @@ function Navbar({ searchTerm, setSearchTerm }) {
 
             <div className="relative w-full md:max-w-md lg:max-w-lg flex items-center group">
               <Search
-                className="absolute left-3.5 text-slate-400 group-focus-within:text-indigo-600 transition-colors duration-200"
+                className="absolute left-3.5 text-slate-400 group-focus-within:text-indigo-600 transition-colors duration-200 pointer-events-none z-10"
                 size={18}
               />
 
               <input
+                ref={searchInputRef}
                 type="text"
                 placeholder="Search local listings, electronics, furniture..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2.5 w-full bg-slate-100/70 hover:bg-slate-100/90 border border-slate-200/60 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-indigo-400/50 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 text-sm shadow-inner"
+                onKeyDown={handleKeyDown}
+                className={`pl-10 ${
+                  searchTerm ? "pr-10" : "pr-4"
+                } py-2.5 w-full bg-slate-100/70 hover:bg-slate-100/90 border border-slate-200/60 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-indigo-400/50 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 text-sm shadow-inner`}
               />
+
+              <AnimatePresence>
+                {searchTerm && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.15 }}
+                    type="button"
+                    onClick={handleClearSearch}
+                    title="Clear search"
+                    aria-label="Clear search"
+                    className="absolute right-2.5 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/80 rounded-full transition-colors duration-200 cursor-pointer z-10 active:scale-90"
+                  >
+                    <X size={15} />
+                  </motion.button>
+                )}
+              </AnimatePresence>
             </div>
 
             <div className="hidden md:flex items-center gap-6">
