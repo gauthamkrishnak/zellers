@@ -12,17 +12,8 @@ import {
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 
-export const CATEGORIES = [
-  "Mobiles",
-  "Electronics",
-  "Vehicles",
-  "Furniture",
-  "Fashion",
-  "Books",
-  "Sports",
-  "Home Appliances",
-  "Others",
-];
+import { CATEGORIES, getBrandsForCategory } from "../constants/brands";
+export { CATEGORIES } from "../constants/brands";
 
 export const CONDITIONS = [
   {
@@ -119,10 +110,22 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
     title: "",
     price: "",
     type: "",
+    brand: "",
+    customBrand: "",
     location: "",
     condition: "Excellent",
     desc: "",
   });
+
+  const handleCategoryChange = (e) => {
+    const newCat = e.target.value;
+    setForm((prev) => ({
+      ...prev,
+      type: newCat,
+      brand: "",
+      customBrand: "",
+    }));
+  };
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -184,6 +187,8 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
       title: "",
       price: "",
       type: "",
+      brand: "",
+      customBrand: "",
       location: "",
       condition: "Excellent",
       desc: "",
@@ -213,6 +218,14 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
       setError("Please select a category.");
       return;
     }
+    if (!form.brand) {
+      setError("Please select a brand.");
+      return;
+    }
+    if (form.brand === "Other" && !form.customBrand?.trim()) {
+      setError("Please enter a custom brand name.");
+      return;
+    }
 
     setError("");
     setLoading(true);
@@ -222,6 +235,8 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
     data.append("title", form.title);
     data.append("price", form.price);
     data.append("type", form.type);
+    const finalBrand = form.brand === "Other" ? form.customBrand.trim() : form.brand;
+    data.append("brand", finalBrand);
     data.append("location", form.location);
     data.append("desc", fullDesc);
     data.append("image", image);
@@ -426,7 +441,7 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
                   <select
                     name="type"
                     value={form.type}
-                    onChange={handleChange}
+                    onChange={handleCategoryChange}
                     required
                     disabled={loading}
                     className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all bg-white cursor-pointer disabled:bg-slate-100"
@@ -440,6 +455,45 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
                   </select>
                 </div>
               </div>
+
+              {/* Brand Section (Appears immediately below Category) */}
+              {form.type && (
+                <div className="flex flex-col gap-1.5 animate-fadeIn">
+                  <label className="text-sm font-semibold text-slate-700">
+                    {form.type === "Books" ? "Publisher *" : "Brand *"}
+                  </label>
+                  <select
+                    name="brand"
+                    value={form.brand}
+                    onChange={handleChange}
+                    required
+                    disabled={loading}
+                    className="px-4 py-3 rounded-xl border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all bg-white cursor-pointer disabled:bg-slate-100"
+                  >
+                    <option value="">
+                      {form.type === "Books" ? "Select Publisher..." : "Select Brand..."}
+                    </option>
+                    {getBrandsForCategory(form.type).map((b) => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                    <option value="Other">Other (Custom {form.type === "Books" ? "Publisher" : "Brand"})</option>
+                  </select>
+
+                  {form.brand === "Other" && (
+                    <input
+                      name="customBrand"
+                      value={form.customBrand}
+                      onChange={handleChange}
+                      required
+                      disabled={loading}
+                      placeholder={form.type === "Books" ? "Enter custom publisher name..." : "Enter custom brand name..."}
+                      className="mt-1.5 px-4 py-3 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all disabled:bg-slate-100"
+                    />
+                  )}
+                </div>
+              )}
 
               {/* Location */}
               <div className="flex flex-col gap-1.5">

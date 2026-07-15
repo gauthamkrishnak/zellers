@@ -3,10 +3,12 @@ import uuid
 import razorpay
 from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Form, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
+from sqlalchemy import text, or_, and_, func
 from database import engine, SessionLocal
 from models import Base, Product, User, Wishlist, Cart, Order, OrderItem
-from schemas import UserRegister, UserLogin, PaymentVerifyRequest, PaymentFailureRequest
+from schemas import UserRegister, UserLogin, PaymentVerifyRequest, PaymentFailureRequest, ProductCreate, ProductUpdate, ProductResponse
+from constants import CATEGORIES, CATEGORY_BRAND_MAPPING
+from products import products as seed_products
 from auth import hash_password, verify_password, create_access_token
 from jose import jwt, JWTError
 from auth import SECRET_KEY, ALGORITHM
@@ -47,8 +49,18 @@ with engine.connect() as conn:
         conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS is_sold BOOLEAN DEFAULT FALSE"))
         conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS user_id INTEGER"))
         conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS condition VARCHAR DEFAULT 'Excellent'"))
+        conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS brand VARCHAR NULL"))
         conn.execute(text("UPDATE products SET is_sold = TRUE WHERE status = 'sold' AND (is_sold IS NULL OR is_sold = FALSE)"))
         conn.execute(text("UPDATE products SET user_id = 1 WHERE user_id IS NULL"))
+        conn.execute(text("UPDATE products SET image = 'iphone13.jpg' WHERE image = 'iphone 13.jpg' OR title ILIKE '%iphone 13%'"))
+        conn.execute(text("UPDATE products SET image = 'atomichabits.jpg' WHERE image = 'atomic habits.jpg' OR title ILIKE '%atomic habits%'"))
+        conn.execute(text("UPDATE products SET image = 'badmintonracket.jpg' WHERE image = 'badminton racket.jpg' OR title ILIKE '%badminton racket%'"))
+        for item in seed_products:
+            if item.get("brand") and item.get("id"):
+                conn.execute(
+                    text("UPDATE products SET brand = :brand WHERE id = :id AND (brand IS NULL OR brand = '')"),
+                    {"brand": item["brand"], "id": item["id"]}
+                )
         conn.commit()
     except Exception as e:
         print("Migration note:", e)
@@ -149,6 +161,7 @@ def serialize_product(p: Product, is_wishlisted: Optional[bool] = None) -> dict:
         "desc": clean_desc,
         "raw_desc": raw_desc,
         "condition": cond,
+        "brand": getattr(p, "brand", None) or "",
         "is_brand_new": is_brand_new,
         "status": "sold" if is_sold else (getattr(p, "status", "available") or "available"),
         "is_sold": is_sold,
@@ -187,10 +200,40 @@ def get_optional_user_id_from_header(authorization: Optional[str]) -> Optional[i
     return None
 
 
+@app.get("/filters/brands")
+def get_filter_brands(category: Optional[str] = None):
+    db = SessionLocal()
+    try:
+        query = db.query(Product.brand).filter(Product.brand.isnot(None), Product.brand != "")
+        if category and category != "All":
+            query = query.filter(Product.type == category)
+        db_brands = [b[0].strip() for b in query.distinct().all() if b[0] and b[0].strip()]
+        
+        if category and category != "All":
+            canonical = CATEGORY_BRAND_MAPPING.get(category, CATEGORY_BRAND_MAPPING.get("Others", []))
+        else:
+            canonical = []
+            for b_list in CATEGORY_BRAND_MAPPING.values():
+                canonical.extend(b_list)
+        
+        combined_brands = sorted(list(set(db_brands + canonical)))
+        return combined_brands
+    finally:
+        db.close()
+
+
 @app.get("/products/")
 def get_products(
     category: str = "All",
     search: str = "",
+    brand: Optional[str] = None,
+    location: Optional[str] = None,
+    condition: Optional[str] = None,
+    min_price: Optional[int] = None,
+    max_price: Optional[int] = None,
+    availability: str = "available",
+    deals_only: bool = False,
+    sort: str = "newest",
     authorization: Optional[str] = Header(None),
 ):
     db = SessionLocal()
@@ -203,15 +246,58 @@ def get_products(
     if current_user_id is not None:
         query = query.filter((Product.user_id != current_user_id) | (Product.user_id.is_(None)))
 
-    if category != "All":
+    if category and category != "All":
         query = query.filter(Product.type == category)
 
-    if search:
-        query = query.filter(Product.title.ilike(f"%{search}%"))
+    if search and search.strip():
+        s = search.strip()
+        query = query.filter(
+            or_(
+                Product.title.ilike(f"%{s}%"),
+                Product.type.ilike(f"%{s}%"),
+                Product.desc.ilike(f"%{s}%"),
+                Product.location.ilike(f"%{s}%"),
+                Product.brand.ilike(f"%{s}%"),
+            )
+        )
+
+    if brand and brand.strip():
+        brands_list = [b.strip() for b in brand.split(",") if b.strip()]
+        if brands_list:
+            query = query.filter(or_(*[Product.brand.ilike(f"{b}") for b in brands_list]))
+
+    if location and location.strip():
+        loc_list = [l.strip() for l in location.split(",") if l.strip()]
+        if loc_list:
+            query = query.filter(or_(*[Product.location.ilike(f"%{loc}%") for loc in loc_list]))
+
+    if condition and condition.strip():
+        cond_list = [c.strip() for c in condition.split(",") if c.strip()]
+        if cond_list:
+            query = query.filter(or_(*[Product.condition.ilike(f"{c}") for c in cond_list]))
+
+    if min_price is not None and min_price >= 0:
+        query = query.filter(Product.price >= min_price)
+    if max_price is not None and max_price >= 0:
+        query = query.filter(Product.price <= max_price)
+
+    if availability == "available":
+        query = query.filter((Product.is_sold == False) & (Product.status != "sold"))
+    elif availability == "sold":
+        query = query.filter((Product.is_sold == True) | (Product.status == "sold"))
+
+    if deals_only:
+        query = query.filter(or_(Product.price <= 25000, and_(Product.condition == "Brand New", Product.price <= 45000)))
+
+    if sort == "price_asc":
+        query = query.order_by(Product.price.asc(), Product.id.desc())
+    elif sort == "price_desc":
+        query = query.order_by(Product.price.desc(), Product.id.desc())
+    else:
+        query = query.order_by(Product.id.desc())
 
     products = query.all()
 
-    # Determine wishlisted product IDs for the current user
     wishlisted_ids = set()
     if current_user_id is not None:
         wishlisted_ids = {
@@ -221,7 +307,6 @@ def get_products(
             .all()
         }
 
-    # Add is_wishlisted and is_sold field to each product
     result = [serialize_product(p, is_wishlisted=(p.id in wishlisted_ids)) for p in products]
 
     db.close()
@@ -241,6 +326,7 @@ async def create_product(
     location: str = Form(...),
     desc: str = Form(...),
     condition: str = Form("Excellent"),
+    brand: Optional[str] = Form(None),
     image: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
@@ -305,6 +391,7 @@ async def create_product(
             image=unique_filename,
             desc=desc.strip(),
             condition=condition.strip() if condition else "Excellent",
+            brand=brand.strip() if brand and brand.strip() else None,
             user_id=current_user.id,
         )
         db.add(new_product)
@@ -389,6 +476,7 @@ async def update_product(
     location: Optional[str] = Form(None),
     desc: Optional[str] = Form(None),
     condition: Optional[str] = Form(None),
+    brand: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
     current_user: User = Depends(get_current_user),
 ):
@@ -420,6 +508,8 @@ async def update_product(
             product.location = location.strip()
         if condition is not None and condition.strip():
             product.condition = condition.strip()
+        if brand is not None:
+            product.brand = brand.strip() if brand.strip() else None
         if desc is not None and desc.strip():
             product.desc = desc.strip()
 

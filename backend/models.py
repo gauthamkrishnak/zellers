@@ -17,6 +17,7 @@ class Product(Base):
     is_sold = Column(Boolean, default=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     condition = Column(String, nullable=True, default="Excellent")
+    brand = Column(String, nullable=True, index=True)
 
 
 class User(Base):

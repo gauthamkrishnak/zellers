@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { CATEGORIES, CONDITIONS } from "../components/SellItemModal";
+import { getBrandsForCategory } from "../constants/brands";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
@@ -28,10 +29,22 @@ export default function EditProduct() {
     title: "",
     price: "",
     type: "",
+    brand: "",
+    customBrand: "",
     location: "",
     condition: "Excellent",
     desc: "",
   });
+
+  const handleCategoryChange = (e) => {
+    const newCat = e.target.value;
+    setForm((prev) => ({
+      ...prev,
+      type: newCat,
+      brand: "",
+      customBrand: "",
+    }));
+  };
 
   const [existingImage, setExistingImage] = useState("");
   const [imageFile, setImageFile] = useState(null);
@@ -74,10 +87,17 @@ export default function EditProduct() {
       }
 
       setIsSold(Boolean(prod.is_sold || prod.status === "sold"));
+      const loadedType = prod.type || prod.category || "Others";
+      const canonicalBrands = getBrandsForCategory(loadedType);
+      const loadedBrand = prod.brand || "";
+      const isCustomBrand = loadedBrand && !canonicalBrands.includes(loadedBrand);
+
       setForm({
         title: prod.title || "",
         price: prod.price || "",
-        type: prod.type || prod.category || "Others",
+        type: loadedType,
+        brand: isCustomBrand ? "Other" : loadedBrand,
+        customBrand: isCustomBrand ? loadedBrand : "",
         location: prod.location || "",
         condition: prod.condition || "Excellent",
         desc: prod.desc || "",
@@ -131,6 +151,15 @@ export default function EditProduct() {
       return;
     }
 
+    if (!form.brand) {
+      setError("Please select a brand.");
+      return;
+    }
+    if (form.brand === "Other" && !form.customBrand?.trim()) {
+      setError("Please enter a custom brand name.");
+      return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -139,6 +168,8 @@ export default function EditProduct() {
     data.append("title", form.title);
     data.append("price", form.price);
     data.append("type", form.type);
+    const finalBrand = form.brand === "Other" ? form.customBrand.trim() : form.brand;
+    data.append("brand", finalBrand);
     data.append("location", form.location);
     data.append("condition", form.condition);
     data.append("desc", fullDesc);
@@ -282,7 +313,7 @@ export default function EditProduct() {
               <select
                 name="type"
                 value={form.type}
-                onChange={handleChange}
+                onChange={handleCategoryChange}
                 disabled={isSold || saving}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-sm font-medium text-slate-800 outline-none transition disabled:bg-slate-50 cursor-pointer"
               >
@@ -293,6 +324,44 @@ export default function EditProduct() {
                 ))}
               </select>
             </div>
+
+            {/* Brand Section */}
+            {form.type && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  {form.type === "Books" ? "Publisher" : "Brand"} <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  name="brand"
+                  value={form.brand}
+                  onChange={handleChange}
+                  disabled={isSold || saving}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-sm font-medium text-slate-800 outline-none transition disabled:bg-slate-50 cursor-pointer"
+                >
+                  <option value="">
+                    {form.type === "Books" ? "Select Publisher..." : "Select Brand..."}
+                  </option>
+                  {getBrandsForCategory(form.type).map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                  <option value="Other">Other (Custom {form.type === "Books" ? "Publisher" : "Brand"})</option>
+                </select>
+
+                {form.brand === "Other" && (
+                  <input
+                    type="text"
+                    name="customBrand"
+                    value={form.customBrand}
+                    onChange={handleChange}
+                    disabled={isSold || saving}
+                    placeholder={form.type === "Books" ? "Enter custom publisher name..." : "Enter custom brand name..."}
+                    className="w-full mt-2 px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-sm font-medium text-slate-800 placeholder-slate-400 outline-none transition disabled:bg-slate-50"
+                  />
+                )}
+              </div>
+            )}
 
             <div className="sm:col-span-2">
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">

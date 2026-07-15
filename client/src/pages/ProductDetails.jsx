@@ -9,6 +9,7 @@ import {
   Heart,
   Phone,
   UserCheck,
+  Tag,
 } from "lucide-react";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
@@ -151,9 +152,16 @@ function ProductDetails() {
         <div className="lg:col-span-5 flex flex-col gap-6">
           <div className="bg-white rounded-3xl border border-slate-200/50 p-6 md:p-8 shadow-sm flex flex-col gap-4">
             <div>
-              <span className="text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full uppercase tracking-wider">
-                {product.type}
-              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full uppercase tracking-wider">
+                  {product.type}
+                </span>
+                {product.brand && (
+                  <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-full uppercase tracking-wider">
+                    {product.brand}
+                  </span>
+                )}
+              </div>
 
               <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 tracking-tight mt-4">
                 {product.title}
@@ -173,6 +181,12 @@ function ProductDetails() {
                 <Calendar size={16} className="text-slate-400" />
                 <span>Listed {product.listed}</span>
               </div>
+              {product.brand && (
+                <div className="flex items-center gap-2">
+                  <Tag size={16} className="text-slate-400" />
+                  <span>Brand: <strong className="text-slate-700">{product.brand}</strong></span>
+                </div>
+              )}
             </div>
 
             {isSold && (

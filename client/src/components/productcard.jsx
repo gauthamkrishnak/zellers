@@ -10,7 +10,7 @@ function ProductCard(props) {
   const { refreshWishlist } = useWishlist();
   const { getAuthHeaders, isAuthenticated } = useAuth();
 
-  const { id, title, price, image, location, listed, condition } = props;
+  const { id, title, price, image, location, listed, condition, brand } = props;
   const isSold = Boolean(props.is_sold || props.status === "sold");
 
   const [isWishlisted, setIsWishlisted] = useState(props.is_wishlisted);
@@ -117,6 +117,11 @@ function ProductCard(props) {
 
       <div className="p-5 flex flex-col flex-grow justify-between gap-4">
         <div>
+          {brand && (
+            <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-600 uppercase tracking-wider mb-1.5 border border-indigo-100/60">
+              {brand}
+            </span>
+          )}
           <h3
             className={`font-bold text-base leading-snug line-clamp-2 ${
               isSold
