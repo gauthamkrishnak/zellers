@@ -15,6 +15,7 @@ import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import Loader from "../components/Loader";
+import SellerInfo from "../components/SellerInfo";
 
 function ProductDetails() {
   const { id } = useParams();
@@ -179,7 +180,7 @@ function ProductDetails() {
               </div>
               <div className="flex items-center gap-2">
                 <Calendar size={16} className="text-slate-400" />
-                <span>Listed {product.listed}</span>
+                <span>Listed on {product.listed ? product.listed.replace(/^on\s+/i, "") : ""}</span>
               </div>
               {product.brand && (
                 <div className="flex items-center gap-2">
@@ -253,34 +254,7 @@ function ProductDetails() {
             </div>
           </div>
 
-          <div className="bg-white rounded-3xl border border-slate-200/50 p-6 shadow-sm flex flex-col gap-4">
-            <h3 className="font-bold text-slate-800 text-base">
-              Seller Information
-            </h3>
-
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-lg shadow-sm">
-                {product.title.charAt(0)}
-              </div>
-
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <p className="font-bold text-slate-800 text-sm">
-                    Verified Seller
-                  </p>
-                  <UserCheck size={14} className="text-emerald-500" />
-                </div>
-
-                <p className="text-slate-400 text-xs font-medium">
-                  Member since Oct 2023
-                </p>
-              </div>
-            </div>
-
-            <button className="w-full border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-2.5 rounded-xl text-xs transition cursor-pointer bg-white">
-              View Profile
-            </button>
-          </div>
+          <SellerInfo product={product} />
 
           <div className="bg-indigo-50/50 border border-indigo-100 rounded-3xl p-6 flex flex-col gap-3">
             <h3 className="font-bold text-indigo-900 text-sm flex items-center gap-2">

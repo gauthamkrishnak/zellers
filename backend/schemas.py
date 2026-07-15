@@ -63,6 +63,7 @@ class ProductResponse(BaseModel):
     is_sold: bool
     user_id: Optional[int] = None
     seller_id: Optional[int] = None
+    seller_name: Optional[str] = None
     is_wishlisted: Optional[bool] = None
 
     class Config:

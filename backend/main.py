@@ -6,6 +6,7 @@ import razorpay
 from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Form, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text, or_, and_, func
+from sqlalchemy.orm import joinedload
 from database import engine, SessionLocal
 from models import Base, Product, User, Wishlist, Cart, Order, OrderItem
 from schemas import UserRegister, UserLogin, PaymentVerifyRequest, PaymentFailureRequest, ProductCreate, ProductUpdate, ProductResponse
@@ -63,6 +64,29 @@ with engine.connect() as conn:
                     text("UPDATE products SET brand = :brand WHERE id = :id AND (brand IS NULL OR brand = '')"),
                     {"brand": item["brand"], "id": item["id"]}
                 )
+
+        time_map = {
+            "Just now": "15 Jul 2026, 02:30 PM",
+            "2 hours ago": "15 Jul 2026, 12:30 PM",
+            "4 hours ago": "15 Jul 2026, 10:30 AM",
+            "5 hours ago": "15 Jul 2026, 09:30 AM",
+            "6 hours ago": "15 Jul 2026, 08:30 AM",
+            "8 hours ago": "15 Jul 2026, 06:30 AM",
+            "10 hours ago": "15 Jul 2026, 04:30 AM",
+            "Yesterday": "14 Jul 2026, 03:15 PM",
+            "2 days ago": "13 Jul 2026, 11:20 AM",
+            "3 days ago": "12 Jul 2026, 02:45 PM",
+            "4 days ago": "11 Jul 2026, 09:10 AM",
+            "5 days ago": "10 Jul 2026, 04:00 PM",
+            "6 days ago": "09 Jul 2026, 01:30 PM",
+            "1 week ago": "08 Jul 2026, 10:15 AM",
+            "2 weeks ago": "01 Jul 2026, 05:20 PM",
+        }
+        for old_val, new_val in time_map.items():
+            conn.execute(
+                text("UPDATE products SET listed = :new_val WHERE listed = :old_val"),
+                {"new_val": new_val, "old_val": old_val}
+            )
 
         # Add immutable purchase snapshot columns to order_items table
         snapshot_cols = [
@@ -196,6 +220,28 @@ def serialize_product(p: Product, is_wishlisted: Optional[bool] = None) -> dict:
         cond = "Excellent"
     is_brand_new = (cond == "Brand New")
 
+    raw_listed = str(getattr(p, "listed", "")) or "15 Jul 2026, 02:30 PM"
+    relative_to_static_map = {
+        "Just now": "15 Jul 2026, 02:30 PM",
+        "2 hours ago": "15 Jul 2026, 12:30 PM",
+        "4 hours ago": "15 Jul 2026, 10:30 AM",
+        "5 hours ago": "15 Jul 2026, 09:30 AM",
+        "6 hours ago": "15 Jul 2026, 08:30 AM",
+        "8 hours ago": "15 Jul 2026, 06:30 AM",
+        "10 hours ago": "15 Jul 2026, 04:30 AM",
+        "Yesterday": "14 Jul 2026, 03:15 PM",
+        "2 days ago": "13 Jul 2026, 11:20 AM",
+        "3 days ago": "12 Jul 2026, 02:45 PM",
+        "4 days ago": "11 Jul 2026, 09:10 AM",
+        "5 days ago": "10 Jul 2026, 04:00 PM",
+        "6 days ago": "09 Jul 2026, 01:30 PM",
+        "1 week ago": "08 Jul 2026, 10:15 AM",
+        "2 weeks ago": "01 Jul 2026, 05:20 PM",
+    }
+    clean_listed = relative_to_static_map.get(raw_listed, raw_listed)
+    if "ago" in clean_listed.lower() or clean_listed.lower() in ("yesterday", "just now"):
+        clean_listed = "15 Jul 2026, 02:30 PM"
+
     data = {
         "id": p.id,
         "title": p.title,
@@ -203,7 +249,7 @@ def serialize_product(p: Product, is_wishlisted: Optional[bool] = None) -> dict:
         "type": p.type,
         "category": p.type,
         "location": p.location,
-        "listed": p.listed,
+        "listed": clean_listed,
         "image": p.image,
         "desc": clean_desc,
         "raw_desc": raw_desc,
@@ -213,8 +259,23 @@ def serialize_product(p: Product, is_wishlisted: Optional[bool] = None) -> dict:
         "status": "sold" if is_sold else (getattr(p, "status", "available") or "available"),
         "is_sold": is_sold,
         "user_id": getattr(p, "user_id", None),
-        "seller_id": getattr(p, "user_id", None),
     }
+
+    try:
+        seller_obj = getattr(p, "seller", None)
+    except Exception:
+        seller_obj = None
+
+    if seller_obj:
+        seller_id = seller_obj.id
+        seller_name = seller_obj.username or (seller_obj.email.split("@")[0] if seller_obj.email else "Admin")
+    else:
+        seller_id = getattr(p, "user_id", None)
+        seller_name = "Admin"
+
+    data["seller_id"] = seller_id
+    data["seller_name"] = seller_name
+
     if is_wishlisted is not None:
         data["is_wishlisted"] = is_wishlisted
     return data
@@ -287,7 +348,7 @@ def get_products(
 
     current_user_id = get_optional_user_id_from_header(authorization)
 
-    query = db.query(Product)
+    query = db.query(Product).options(joinedload(Product.seller))
 
     # Exclude logged-in user's own listings before applying other filters
     if current_user_id is not None:
@@ -434,7 +495,7 @@ async def create_product(
             price=price,
             type=type.strip(),
             location=location.strip(),
-            listed="Just now",
+            listed=datetime.now().strftime("%d %b %Y, %I:%M %p"),
             image=unique_filename,
             desc=desc.strip(),
             condition=condition.strip() if condition else "Excellent",
@@ -444,6 +505,7 @@ async def create_product(
         db.add(new_product)
         db.commit()
         db.refresh(new_product)
+        result = serialize_product(new_product, is_wishlisted=False)
     except Exception as e:
         db.rollback()
         if os.path.exists(file_path):
@@ -458,7 +520,7 @@ async def create_product(
     finally:
         db.close()
 
-    return serialize_product(new_product, is_wishlisted=False)
+    return result
 
 
 @app.get("/products/{product_id}")
@@ -468,7 +530,7 @@ def get_product(
 ):
     db = SessionLocal()
 
-    product = db.query(Product).filter(Product.id == product_id).first()
+    product = db.query(Product).options(joinedload(Product.seller)).filter(Product.id == product_id).first()
 
     if product is None:
         db.close()
@@ -505,6 +567,7 @@ def get_my_listings(current_user: User = Depends(get_current_user)):
     try:
         products = (
             db.query(Product)
+            .options(joinedload(Product.seller))
             .filter(Product.user_id == current_user.id)
             .order_by(Product.id.desc())
             .all()
@@ -529,7 +592,7 @@ async def update_product(
 ):
     db = SessionLocal()
     try:
-        product = db.query(Product).filter(Product.id == product_id).first()
+        product = db.query(Product).options(joinedload(Product.seller)).filter(Product.id == product_id).first()
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
         if product.user_id != current_user.id:
@@ -636,6 +699,7 @@ def get_wishlist(user_id: int = Depends(get_current_user_id)):
 
     products = (
         db.query(Product)
+        .options(joinedload(Product.seller))
         .filter(Product.id.in_(product_ids))
         .all()
     )
@@ -662,7 +726,7 @@ def toggle_wishlist(
 ):
     db = SessionLocal()
 
-    product = db.query(Product).filter(Product.id == product_id).first()
+    product = db.query(Product).options(joinedload(Product.seller)).filter(Product.id == product_id).first()
 
     if product is None:
         db.close()
@@ -707,6 +771,7 @@ def get_cart(user_id: int = Depends(get_current_user_id)):
 
     products = (
         db.query(Product)
+        .options(joinedload(Product.seller))
         .filter(Product.id.in_(product_ids))
         .all()
     )

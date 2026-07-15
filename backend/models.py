@@ -1,5 +1,6 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy.orm import relationship
 from database import Base
 
 class Product(Base):
@@ -18,6 +19,7 @@ class Product(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     condition = Column(String, nullable=True, default="Excellent")
     brand = Column(String, nullable=True, index=True)
+    seller = relationship("User", foreign_keys=[user_id])
 
 
 class User(Base):
