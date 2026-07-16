@@ -191,8 +191,14 @@ export default function PurchaseDetails() {
     purchaseItem.desc ||
     "No historical description available for this snapshot.";
   const displayPrice = purchaseItem.purchased_price || 0;
+  const rawSnapshotSeller = purchaseItem.snapshot_seller_name;
+  const rawSeller = purchaseItem.seller_name;
   const sellerName =
-    purchaseItem.snapshot_seller_name || purchaseItem.seller_name;
+    (rawSnapshotSeller && rawSnapshotSeller !== "Seller" && rawSnapshotSeller !== "Verified Seller")
+      ? rawSnapshotSeller
+      : (rawSeller && rawSeller !== "Seller" && rawSeller !== "Verified Seller")
+      ? rawSeller
+      : "admin";
 
   return (
     <div className="min-h-screen bg-slate-50/60 py-8 px-4 sm:px-6 lg:px-8">
@@ -424,7 +430,7 @@ export default function PurchaseDetails() {
                     <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
                   </div>
                   <p className="text-slate-400 text-xs font-medium">
-                    Verified Seller Snapshot
+                    {sellerName.toLowerCase() === "admin" ? "Official Admin Store" : "Verified Seller Snapshot"}
                   </p>
                 </div>
               </div>

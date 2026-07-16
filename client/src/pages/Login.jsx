@@ -259,14 +259,14 @@ function Login() {
                 >
                   Password
                 </label>
-                {!isRegistering && (
+                {/* {!isRegistering && (
                   <button
                     type="button"
                     className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold transition-colors cursor-pointer required"
                   >
                     Forgot password?
                   </button>
-                )}
+                )} */}
               </div>
               <div className="relative">
                 <input

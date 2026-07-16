@@ -35,7 +35,6 @@ export default function MyPurchases() {
   const [reviewingExisting, setReviewingExisting] = useState(null);
   const [selectedRating, setSelectedRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
-  const [reviewText, setReviewText] = useState("");
   const [submittingRate, setSubmittingRate] = useState(false);
   const [rateError, setRateError] = useState(null);
 
@@ -45,11 +44,9 @@ export default function MyPurchases() {
     if (existingReview) {
       setReviewingExisting(existingReview);
       setSelectedRating(existingReview.rating || 5);
-      setReviewText(existingReview.review_text || "");
     } else {
       setReviewingExisting(null);
       setSelectedRating(0);
-      setReviewText("");
     }
   };
 
@@ -58,7 +55,6 @@ export default function MyPurchases() {
     setReviewingExisting(null);
     setSelectedRating(0);
     setHoveredRating(0);
-    setReviewText("");
     setRateError(null);
   };
 
@@ -75,7 +71,7 @@ export default function MyPurchases() {
           `http://127.0.0.1:8000/reviews/${reviewingExisting.id}`,
           {
             rating: selectedRating,
-            review_text: reviewText.trim() || null,
+            review_text: null,
           },
           { headers: getAuthHeaders() }
         );
@@ -85,7 +81,7 @@ export default function MyPurchases() {
           {
             order_item_id: activeRateItem.order_item_id || activeRateItem.product_id,
             rating: selectedRating,
-            review_text: reviewText.trim() || null,
+            review_text: null,
           },
           { headers: getAuthHeaders() }
         );
@@ -293,7 +289,14 @@ export default function MyPurchases() {
                 const displayPrice = item.purchased_price || 0;
                 const displayLocation =
                   item.snapshot_location || item.location;
-                const sellerName = item.snapshot_seller_name || item.seller_name;
+                const rawSnapshotSeller = item.snapshot_seller_name;
+                const rawSeller = item.seller_name;
+                const sellerName =
+                  (rawSnapshotSeller && rawSnapshotSeller !== "Seller" && rawSnapshotSeller !== "Verified Seller")
+                    ? rawSnapshotSeller
+                    : (rawSeller && rawSeller !== "Seller" && rawSeller !== "Verified Seller")
+                    ? rawSeller
+                    : "admin";
 
                 // Determine dynamic Buy Again button state exactly per prompt specifications
                 const productExists = item.product_exists;
@@ -413,7 +416,7 @@ export default function MyPurchases() {
                                     <Star key={i} size={13} className="fill-amber-500 text-amber-500" />
                                   ))}
                                 </div>
-                                <span className="ml-1 text-slate-600 group-hover/rate:text-indigo-600">(Edit Review)</span>
+                                <span className="ml-1 text-slate-600 group-hover/rate:text-indigo-600">(Edit Rating)</span>
                               </button>
                             )
                           )}
@@ -471,10 +474,10 @@ export default function MyPurchases() {
                   <div>
                     <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                       <Star className="fill-amber-500 text-amber-500" size={22} />
-                      <span>{reviewingExisting ? "Edit Seller Review" : "Rate Seller"}</span>
+                      <span>{reviewingExisting ? "Edit Seller Rating" : "Rate Seller"}</span>
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      For seller <span className="font-bold text-slate-700">{activeRateItem.snapshot_seller_name || activeRateItem.seller_name}</span> • Order #{activeRateItem.order_id}
+                      For seller <span className="font-bold text-slate-700">{activeRateItem.snapshot_seller_name && activeRateItem.snapshot_seller_name !== "Seller" && activeRateItem.snapshot_seller_name !== "Verified Seller" ? activeRateItem.snapshot_seller_name : (activeRateItem.seller_name && activeRateItem.seller_name !== "Seller" && activeRateItem.seller_name !== "Verified Seller" ? activeRateItem.seller_name : "admin")}</span> • Order #{activeRateItem.order_id}
                     </p>
                   </div>
                   <button
@@ -536,20 +539,6 @@ export default function MyPurchases() {
                   </span>
                 </div>
 
-                {/* Optional Review Text */}
-                <div className="mt-5">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    Written Review <span className="text-slate-400 font-normal">(Optional)</span>
-                  </label>
-                  <textarea
-                    value={reviewText}
-                    onChange={(e) => setReviewText(e.target.value)}
-                    placeholder="Share your experience with this seller (communication, packaging, accuracy of description)..."
-                    rows={3}
-                    className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none transition-all resize-none"
-                  />
-                </div>
-
                 <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                   <button
                     type="button"
@@ -570,7 +559,7 @@ export default function MyPurchases() {
                     ) : (
                       <>
                         <CheckCircle2 size={15} />
-                        <span>{reviewingExisting ? "Update Review" : "Submit Review"}</span>
+                        <span>{reviewingExisting ? "Update Rating" : "Submit Rating"}</span>
                       </>
                     )}
                   </button>

@@ -390,10 +390,10 @@ function ProductDetails() {
             </div>
           )}
 
-          {/* Recent Seller Reviews List */}
+          {/* Recent Seller Ratings List */}
           <div className="bg-white rounded-3xl border border-slate-200/60 p-6 shadow-sm flex flex-col gap-4">
             <h3 className="font-bold text-slate-800 text-base flex items-center justify-between">
-              <span>Recent Seller Reviews</span>
+              <span>Recent Seller Ratings</span>
               <span className="text-xs font-semibold text-indigo-600">Verified Purchases</span>
             </h3>
 
@@ -421,18 +421,12 @@ function ProductDetails() {
                         <Star key={idx} size={12} className="fill-amber-500 text-amber-500" />
                       ))}
                     </div>
-
-                    {r.review_text && (
-                      <p className="text-xs text-slate-600 leading-relaxed font-normal bg-slate-50/60 p-3 rounded-xl border border-slate-100/80">
-                        "{r.review_text}"
-                      </p>
-                    )}
                   </div>
                 ))}
               </div>
             ) : (
               <div className="py-6 text-center text-slate-400 text-xs font-medium">
-                No reviews yet for this seller. Complete a purchase to leave the first review!
+                No ratings yet for this seller. Complete a purchase to rate this seller!
               </div>
             )}
           </div>

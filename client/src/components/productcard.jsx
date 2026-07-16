@@ -149,7 +149,7 @@ function ProductCard(props) {
           </div>
 
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 mt-2.5 pt-2 border-t border-slate-100/80">
-            <span className="truncate max-w-[120px]">By {props.seller_name || "Admin"}</span>
+            <span className="truncate max-w-[120px]">By {props.seller_name && props.seller_name !== "Seller" && props.seller_name !== "Verified Seller" && props.seller_name !== "Admin" ? props.seller_name : "admin"}</span>
             <div className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 font-bold text-[11px]">
               <Star size={11} className="fill-amber-500 text-amber-500" />
               <span>{props.seller_rating && props.seller_rating > 0 ? Number(props.seller_rating).toFixed(1) : "New"}</span>

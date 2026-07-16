@@ -155,26 +155,37 @@ with engine.connect() as conn:
     except Exception as e:
         print("Migration note:", e)
 
-# Backfill existing order items without snapshots
+# Backfill existing order items without snapshots or with default "Seller"
 try:
     with SessionLocal() as db_bf:
-        items_to_bf = db_bf.query(OrderItem).filter(OrderItem.snapshot_product_title == None).all()
+        items_to_bf = db_bf.query(OrderItem).filter(
+            (OrderItem.snapshot_product_title == None) |
+            (OrderItem.snapshot_seller_name == None) |
+            (OrderItem.snapshot_seller_name == "Seller")
+        ).all()
         for itm in items_to_bf:
             p = db_bf.query(Product).filter(Product.id == itm.product_id).first()
-            seller = db_bf.query(User).filter(User.id == p.user_id).first() if (p and p.user_id) else None
-            itm.snapshot_product_title = itm.title or (p.title if p else "Purchased Item")
-            itm.snapshot_brand = (p.brand if p and p.brand else "Generic")
-            itm.snapshot_category = (p.type if p and p.type else "Others")
-            itm.snapshot_condition = (p.condition if p and p.condition else "Good")
-            itm.snapshot_price_paid = itm.price
-            itm.snapshot_original_price = (p.price if p else itm.price)
-            itm.snapshot_location = (p.location if p and p.location else "India")
-            itm.snapshot_description = (p.desc if p and p.desc else "")
-            itm.snapshot_primary_image = (p.image if p and p.image else "")
-            itm.snapshot_image_urls = json.dumps([p.image] if (p and p.image) else [])
-            itm.snapshot_seller_name = (seller.username or seller.email.split("@")[0]) if seller else "Seller"
-            itm.snapshot_seller_id = p.user_id if p else None
-            itm.snapshot_purchase_time = datetime.utcnow().isoformat()
+            seller_id = itm.snapshot_seller_id or (p.user_id if p else None)
+            seller = db_bf.query(User).filter(User.id == seller_id).first() if seller_id else None
+            if itm.snapshot_product_title is None:
+                itm.snapshot_product_title = itm.title or (p.title if p else "Purchased Item")
+                itm.snapshot_brand = (p.brand if p and p.brand else "Generic")
+                itm.snapshot_category = (p.type if p and p.type else "Others")
+                itm.snapshot_condition = (p.condition if p and p.condition else "Good")
+                itm.snapshot_price_paid = itm.price
+                itm.snapshot_original_price = (p.price if p else itm.price)
+                itm.snapshot_location = (p.location if p and p.location else "India")
+                itm.snapshot_description = (p.desc if p and p.desc else "")
+                itm.snapshot_primary_image = (p.image if p and p.image else "")
+                itm.snapshot_image_urls = json.dumps([p.image] if (p and p.image) else [])
+                itm.snapshot_purchase_time = datetime.utcnow().isoformat()
+            if seller:
+                itm.snapshot_seller_name = seller.username or seller.email.split("@")[0]
+                itm.snapshot_seller_id = seller.id
+            elif not itm.snapshot_seller_name or itm.snapshot_seller_name in ["Seller", "Verified Seller"]:
+                itm.snapshot_seller_name = "admin"
+            if p and not itm.snapshot_seller_id:
+                itm.snapshot_seller_id = p.user_id
         if items_to_bf:
             db_bf.commit()
 except Exception as e_bf:
@@ -325,7 +336,9 @@ def serialize_product(p: Product, is_wishlisted: Optional[bool] = None) -> dict:
 
     if seller_obj:
         seller_id = seller_obj.id
-        seller_name = seller_obj.username or (seller_obj.email.split("@")[0] if seller_obj.email else "Admin")
+        seller_name = seller_obj.username or (seller_obj.email.split("@")[0] if seller_obj.email else "admin")
+        if not seller_name or seller_name in ["Seller", "Verified Seller", "Admin"]:
+            seller_name = "admin"
         seller_rating = round(getattr(seller_obj, "average_rating", 0.0) or 0.0, 1)
         seller_reviews_count = getattr(seller_obj, "total_reviews", 0) or 0
         seller_rating_distribution = {
@@ -338,7 +351,7 @@ def serialize_product(p: Product, is_wishlisted: Optional[bool] = None) -> dict:
         seller_joined_date = seller_obj.created_at.isoformat() if hasattr(seller_obj, "created_at") and seller_obj.created_at else None
     else:
         seller_id = getattr(p, "user_id", None)
-        seller_name = "Admin"
+        seller_name = "admin"
         seller_rating = 0.0
         seller_reviews_count = 0
         seller_rating_distribution = {"5": 0, "4": 0, "3": 0, "2": 0, "1": 0}
@@ -1573,7 +1586,7 @@ def verify_checkout(
                 snapshot_description=p.desc or "",
                 snapshot_primary_image=p.image or "",
                 snapshot_image_urls=json.dumps([p.image] if p.image else []),
-                snapshot_seller_name=(seller.username or seller.email.split("@")[0]) if seller else "Seller",
+                snapshot_seller_name=(seller.username or seller.email.split("@")[0]) if seller else "admin",
                 snapshot_seller_id=p.user_id,
                 snapshot_purchase_time=datetime.utcnow().isoformat(),
             )
@@ -1627,6 +1640,35 @@ def payment_failure(
         db.close()
 
 
+def resolve_seller_name(db, order_item, product=None):
+    seller_name = order_item.snapshot_seller_name
+    if not seller_name or seller_name in ["Seller", "Verified Seller"]:
+        seller_id = order_item.snapshot_seller_id
+        if not seller_id and not product:
+            product = db.query(Product).filter(Product.id == order_item.product_id).first()
+        if not seller_id and product:
+            seller_id = product.user_id
+        if seller_id:
+            s_user = db.query(User).filter(User.id == seller_id).first()
+            if s_user:
+                seller_name = s_user.username or s_user.email.split("@")[0]
+                order_item.snapshot_seller_name = seller_name
+                if not order_item.snapshot_seller_id:
+                    order_item.snapshot_seller_id = seller_id
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+    if not seller_name or seller_name in ["Seller", "Verified Seller"]:
+        order_item.snapshot_seller_name = "admin"
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+        return "admin"
+    return seller_name
+
+
 @app.get("/orders/my-purchases")
 def get_my_purchases(current_user: User = Depends(get_current_user)):
     db = SessionLocal()
@@ -1638,15 +1680,15 @@ def get_my_purchases(current_user: User = Depends(get_current_user)):
             for itm in items:
                 p = db.query(Product).filter(Product.id == itm.product_id).first()
                 if p:
-                    is_sold = bool(getattr(p, "is_sold", False)) or (getattr(p, "status", "") == "sold")
-                    current_status = "sold" if is_sold else (getattr(p, "status", "available") or "available")
-                    current_image = p.image or (itm.snapshot_primary_image or "")
+                    current_status = p.status
+                    current_image = p.image
                     product_exists = True
+                    is_sold = p.is_sold or (p.status == "sold")
                 else:
-                    is_sold = True
-                    current_status = "deleted"
-                    current_image = itm.snapshot_primary_image or ""
+                    current_status = "No Longer Available"
+                    current_image = None
                     product_exists = False
+                    is_sold = True
 
                 snapshot_title = itm.snapshot_product_title or itm.title or (p.title if p else "Purchased Item")
                 snapshot_brand = itm.snapshot_brand or (getattr(p, "brand", None) if p else "Generic") or "Generic"
@@ -1658,11 +1700,7 @@ def get_my_purchases(current_user: User = Depends(get_current_user)):
                 snapshot_desc = itm.snapshot_description or (p.desc if p else "") or ""
                 snapshot_image = itm.snapshot_primary_image or (p.image if p else "") or ""
                 snapshot_images_str = itm.snapshot_image_urls or json.dumps([snapshot_image] if snapshot_image else [])
-                snapshot_seller = itm.snapshot_seller_name or "Seller"
-                if not itm.snapshot_seller_name and p and p.user_id:
-                    s_user = db.query(User).filter(User.id == p.user_id).first()
-                    if s_user:
-                        snapshot_seller = s_user.username or s_user.email.split("@")[0]
+                snapshot_seller = resolve_seller_name(db, itm, p)
                 snapshot_time = itm.snapshot_purchase_time or o.created_at or datetime.utcnow().isoformat()
 
                 o_status = o.status or "Delivered"
@@ -1760,7 +1798,7 @@ def get_orders(current_user: User = Depends(get_current_user)):
                         "snapshot_description": i.snapshot_description,
                         "snapshot_primary_image": i.snapshot_primary_image,
                         "snapshot_image_urls": i.snapshot_image_urls,
-                        "snapshot_seller_name": i.snapshot_seller_name,
+                        "snapshot_seller_name": resolve_seller_name(db, i),
                         "snapshot_seller_id": i.snapshot_seller_id,
                         "snapshot_purchase_time": i.snapshot_purchase_time,
                     }
@@ -1803,7 +1841,7 @@ def get_order(order_id: int, current_user: User = Depends(get_current_user)):
                     "snapshot_description": i.snapshot_description,
                     "snapshot_primary_image": i.snapshot_primary_image,
                     "snapshot_image_urls": i.snapshot_image_urls,
-                    "snapshot_seller_name": i.snapshot_seller_name,
+                    "snapshot_seller_name": resolve_seller_name(db, i),
                     "snapshot_seller_id": i.snapshot_seller_id,
                     "snapshot_purchase_time": i.snapshot_purchase_time,
                 }

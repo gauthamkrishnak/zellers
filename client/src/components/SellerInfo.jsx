@@ -17,7 +17,7 @@ export default function SellerInfo({ product }) {
     product?.seller_id &&
     Number(currentUser.id) === Number(product.seller_id);
 
-  const rawSellerName = product?.seller_name || "Admin";
+  const rawSellerName = product?.seller_name && product.seller_name !== "Seller" && product.seller_name !== "Verified Seller" && product.seller_name !== "Admin" ? product.seller_name : "admin";
   const displaySellerName = isOwnListing ? "You" : rawSellerName;
 
   // Live O(1) seller rating, reviews count, and joined date
@@ -82,7 +82,7 @@ export default function SellerInfo({ product }) {
             <span>{sellerRating}</span>
           </div>
           <span className="text-[10px] text-slate-400 font-semibold mt-0.5">
-            {sellerReviewsCount} {sellerReviewsCount === 1 ? "Review" : "Reviews"}
+            {sellerReviewsCount} {sellerReviewsCount === 1 ? "Rating" : "Ratings"}
           </span>
         </div>
 
