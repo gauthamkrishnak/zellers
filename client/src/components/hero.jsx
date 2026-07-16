@@ -1,3 +1,7 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import SellItemModal from "./SellItemModal";
 import {
   Sparkles,
   ArrowRight,
@@ -6,9 +10,13 @@ import {
   Lock,
   Check,
   Tag,
+  PlusCircle,
 } from "lucide-react";
 
-function Hero() {
+function Hero({ onProductAdded }) {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const [isSellModalOpen, setIsSellModalOpen] = useState(false);
   const handleScrollToProducts = () => {
     const featuredSection = document.getElementById(
       "featured-products-section",
@@ -59,8 +67,19 @@ function Hero() {
                 />
               </button>
 
-              <button className="w-full sm:w-auto border border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 text-white font-semibold text-xs sm:text-sm px-6 py-2.5 sm:py-3 rounded-xl backdrop-blur-sm hover:scale-[1.02] active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer">
-                <span>How it Works</span>
+              <button
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    alert("Please log in to sell items.");
+                    navigate("/login");
+                  } else {
+                    setIsSellModalOpen(true);
+                  }
+                }}
+                className="w-full sm:w-auto border border-indigo-400/40 hover:border-indigo-400/80 bg-indigo-500/15 hover:bg-indigo-500/25 text-white font-bold text-xs sm:text-sm px-6 py-2.5 sm:py-3 rounded-xl backdrop-blur-sm shadow-lg shadow-indigo-500/10 hover:shadow-indigo-500/25 hover:scale-[1.02] active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer group/sell"
+              >
+                <PlusCircle size={16} className="text-indigo-300 group-hover/sell:rotate-90 transition-transform duration-300 shrink-0" />
+                <span>Start Selling</span>
               </button>
             </div>
 
@@ -146,6 +165,21 @@ function Hero() {
           </div>
         </div>
       </div>
+      {/* Sell Item Modal */}
+      <SellItemModal
+        isOpen={isSellModalOpen}
+        onClose={() => setIsSellModalOpen(false)}
+        onSuccess={() => {
+          setIsSellModalOpen(false);
+          if (onProductAdded) {
+            onProductAdded();
+          } else if (window.location.pathname === "/") {
+            window.location.reload();
+          } else {
+            navigate("/");
+          }
+        }}
+      />
     </div>
   );
 }

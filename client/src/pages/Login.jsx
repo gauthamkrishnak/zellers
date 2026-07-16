@@ -42,7 +42,8 @@ function Login() {
       navigate("/");
     } catch (error) {
       setError(
-        error.response?.data?.detail || "Authentication failed. Please try again.",
+        error.response?.data?.detail ||
+          "Authentication failed. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -106,9 +107,9 @@ function Login() {
             className="mt-12 grid grid-cols-3 gap-4"
           >
             {[
-              { label: "Active Listings", value: "10K+" },
-              { label: "Trusted Sellers", value: "4.8K+" },
-              { label: "Verified Trades", value: "25K+" },
+              // { label: "Active Listings", value: "10K+" },
+              // { label: "Trusted Sellers", value: "4.8K+" },
+              // { label: "Verified Trades", value: "25K+" },
             ].map((stat) => (
               <div
                 key={stat.label}
@@ -150,18 +151,20 @@ function Login() {
               {isRegistering ? "Create an account" : "Welcome back"}
             </h2>
             <p className="text-slate-500 mt-2 text-sm">
-              {isRegistering ? "Sign up to get started" : "Sign in to your account to continue"}
+              {isRegistering
+                ? "Sign up to get started"
+                : "Sign in to your account to continue"}
             </p>
           </div>
 
           {/* Google Sign-In Button */}
-          <button
+          {/* <button
             onClick={handleGoogleLogin}
             type="button"
             className="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.98] cursor-pointer group"
-          >
-            {/* Google G logo SVG */}
-            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+          > */}
+          {/* Google G logo SVG */}
+          {/* <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -183,17 +186,17 @@ function Login() {
             <ArrowRight
               size={16}
               className="ml-auto text-slate-400 group-hover:translate-x-0.5 transition-transform duration-200"
-            />
-          </button>
+            /> */}
+          {/* </button> */}
 
           {/* Divider */}
-          <div className="flex items-center gap-4 my-6">
+          {/* <div className="flex items-center gap-4 my-6">
             <div className="flex-1 h-px bg-slate-200" />
             <span className="text-slate-400 text-xs font-medium uppercase tracking-widest">
               or
             </span>
             <div className="flex-1 h-px bg-slate-200" />
-          </div>
+          </div> */}
 
           {/* Username / Password Form */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -206,7 +209,10 @@ function Login() {
             {/* Username field – only shown on sign up */}
             {isRegistering && (
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="username" className="text-sm font-semibold text-slate-700">
+                <label
+                  htmlFor="username"
+                  className="text-sm font-semibold text-slate-700"
+                >
                   Username
                 </label>
                 <input
@@ -296,14 +302,16 @@ function Login() {
                   ? "Creating account..."
                   : "Signing in..."
                 : isRegistering
-                ? "Sign Up"
-                : "Sign In"}
+                  ? "Sign Up"
+                  : "Sign In"}
             </button>
           </form>
 
           {/* Sign up prompt */}
           <p className="text-center text-sm text-slate-500 mt-6">
-            {isRegistering ? "Already have an account?" : "Don't have an account?"}{" "}
+            {isRegistering
+              ? "Already have an account?"
+              : "Don't have an account?"}{" "}
             <button
               type="button"
               onClick={() => {
