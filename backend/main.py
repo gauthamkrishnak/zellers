@@ -3,17 +3,20 @@ import uuid
 import json
 from datetime import datetime, timezone, timedelta
 import razorpay
-from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Form, status, Body
+from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Form, status, Body, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text, or_, and_, func, case
 from sqlalchemy.orm import joinedload
 from database import engine, SessionLocal
-from models import Base, Product, User, Wishlist, Cart, Order, OrderItem, Payment, ProductBoost
+from models import Base, Product, User, Wishlist, Cart, Order, OrderItem, Payment, ProductBoost, SellerReview
 from schemas import (
     UserRegister, UserLogin, PaymentVerifyRequest, PaymentFailureRequest,
     ProductCreate, ProductUpdate, ProductResponse, PaymentResponse,
-    ProductBoostResponse, BoostInitiateResponse, BoostVerifyRequest
+    ProductBoostResponse, BoostInitiateResponse, BoostVerifyRequest,
+    SellerReviewCreate, SellerReviewUpdate, SellerReviewResponse,
+    SellerReviewsAggregateResponse
 )
+from review_helpers import update_seller_rating_on_create, update_seller_rating_on_update, update_seller_rating_on_delete
 from constants import CATEGORIES, CATEGORY_BRAND_MAPPING, BOOST_PRICE, BOOST_DURATION_DAYS, BOOST_PLAN_BASIC
 
 from products import products as seed_products
@@ -66,6 +69,12 @@ with engine.connect() as conn:
         conn.execute(text("UPDATE products SET highest_price = price WHERE highest_price IS NULL OR highest_price < price"))
         conn.execute(text("UPDATE products SET is_sold = TRUE WHERE status = 'sold' AND (is_sold IS NULL OR is_sold = FALSE)"))
 
+        # Ensure default seller User id=1 exists before assigning products or order items to user_id=1
+        conn.execute(text("""
+            INSERT INTO users (id, username, email, hashed_password, average_rating, total_reviews, rating_sum, created_at)
+            VALUES (1, 'Seller', 'seller@zellers.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 0.0, 0, 0, NOW())
+            ON CONFLICT (id) DO NOTHING;
+        """))
         conn.execute(text("UPDATE products SET user_id = 1 WHERE user_id IS NULL"))
         conn.execute(text("UPDATE products SET image = 'iphone13.jpg' WHERE image = 'iphone 13.jpg' OR title ILIKE '%iphone 13%'"))
         conn.execute(text("UPDATE products SET image = 'atomichabits.jpg' WHERE image = 'atomic habits.jpg' OR title ILIKE '%atomic habits%'"))
@@ -317,12 +326,30 @@ def serialize_product(p: Product, is_wishlisted: Optional[bool] = None) -> dict:
     if seller_obj:
         seller_id = seller_obj.id
         seller_name = seller_obj.username or (seller_obj.email.split("@")[0] if seller_obj.email else "Admin")
+        seller_rating = round(getattr(seller_obj, "average_rating", 0.0) or 0.0, 1)
+        seller_reviews_count = getattr(seller_obj, "total_reviews", 0) or 0
+        seller_rating_distribution = {
+            "5": getattr(seller_obj, "five_star_count", 0) or 0,
+            "4": getattr(seller_obj, "four_star_count", 0) or 0,
+            "3": getattr(seller_obj, "three_star_count", 0) or 0,
+            "2": getattr(seller_obj, "two_star_count", 0) or 0,
+            "1": getattr(seller_obj, "one_star_count", 0) or 0,
+        }
+        seller_joined_date = seller_obj.created_at.isoformat() if hasattr(seller_obj, "created_at") and seller_obj.created_at else None
     else:
         seller_id = getattr(p, "user_id", None)
         seller_name = "Admin"
+        seller_rating = 0.0
+        seller_reviews_count = 0
+        seller_rating_distribution = {"5": 0, "4": 0, "3": 0, "2": 0, "1": 0}
+        seller_joined_date = None
 
     data["seller_id"] = seller_id
     data["seller_name"] = seller_name
+    data["seller_rating"] = seller_rating
+    data["seller_reviews_count"] = seller_reviews_count
+    data["seller_rating_distribution"] = seller_rating_distribution
+    data["seller_joined_date"] = seller_joined_date
 
     now_utc = datetime.now(timezone.utc)
     b_status = getattr(p, "boost_status", None)
@@ -1151,13 +1178,15 @@ def test_token(token: str):
 
 @app.post("/checkout/initiate")
 def initiate_checkout(
+    mode: Optional[str] = Query(None),
+    product_id: Optional[str] = Query(None),
     data: Optional[Dict[str, Any]] = Body(None),
     current_user: User = Depends(get_current_user)
 ):
     db = SessionLocal()
     try:
-        mode = data.get("mode") if data else None
-        product_id = data.get("product_id") if data else None
+        mode = mode or (data.get("mode") if data else None)
+        product_id = product_id or (data.get("product_id") if data else None)
 
         if mode == "buynow" and product_id:
             product = db.query(Product).filter(Product.id == int(product_id)).first()
@@ -1640,7 +1669,25 @@ def get_my_purchases(current_user: User = Depends(get_current_user)):
                 if o_status == "SUCCESS":
                     o_status = "Delivered"
 
+                rev = db.query(SellerReview).filter(SellerReview.order_item_id == itm.id).first()
+                rev_data = None
+                if rev:
+                    rev_data = {
+                        "id": rev.id,
+                        "order_item_id": rev.order_item_id,
+                        "seller_id": rev.seller_id,
+                        "buyer_id": rev.buyer_id,
+                        "buyer_name": current_user.username or current_user.email.split("@")[0],
+                        "rating": rev.rating,
+                        "review_text": rev.review_text,
+                        "created_at": rev.created_at.isoformat() if rev.created_at else None,
+                        "updated_at": rev.updated_at.isoformat() if rev.updated_at else None,
+                        "verified_purchase": rev.verified_purchase,
+                    }
+
                 purchases.append({
+                    "order_item_id": itm.id,
+                    "user_review": rev_data,
                     "order_id": o.id,
                     "order_date": o.created_at or snapshot_time,
                     "payment_id": o.razorpay_payment_id or o.razorpay_order_id or f"PAY_{o.id}",
@@ -1781,3 +1828,197 @@ def test_razorpay():
             "status": "failed",
             "error": str(e),
         }
+
+
+# ─── Seller Rating & Review Endpoints ($O(1)$ Aggregates) ────────────────────
+
+@app.post("/reviews", response_model=SellerReviewResponse)
+def create_seller_review(data: SellerReviewCreate, current_user: User = Depends(get_current_user)):
+    """Create a new seller review for a verified purchase."""
+    if not (1 <= data.rating <= 5):
+        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5 stars.")
+
+    db = SessionLocal()
+    try:
+        order_item = db.query(OrderItem).filter(OrderItem.id == data.order_item_id).first()
+        if not order_item:
+            raise HTTPException(status_code=404, detail="Order item not found.")
+
+        order = db.query(Order).filter(Order.id == order_item.order_id).first()
+        if not order or order.user_id != current_user.id or order.status not in ["SUCCESS", "Delivered"]:
+            raise HTTPException(status_code=403, detail="You can only rate sellers for completed and verified purchases belonging to you.")
+
+        # Determine seller ID
+        seller_id = order_item.snapshot_seller_id
+        if not seller_id:
+            p = db.query(Product).filter(Product.id == order_item.product_id).first()
+            if p and p.user_id:
+                seller_id = p.user_id
+            elif order_item.snapshot_seller_name:
+                s_user = db.query(User).filter(User.username == order_item.snapshot_seller_name).first()
+                if s_user:
+                    seller_id = s_user.id
+
+        if not seller_id:
+            raise HTTPException(status_code=400, detail="Could not identify the seller for this purchase.")
+
+        # Ensure seller exists in users table before inserting review to prevent foreign key violations
+        seller_user = db.query(User).filter(User.id == seller_id).first()
+        if not seller_user:
+            raise HTTPException(status_code=400, detail="The seller for this purchase no longer exists in the marketplace.")
+
+        if seller_id == current_user.id:
+            raise HTTPException(status_code=400, detail="You cannot submit a review for yourself.")
+
+        existing_review = db.query(SellerReview).filter(SellerReview.order_item_id == order_item.id).first()
+        if existing_review:
+            raise HTTPException(status_code=400, detail="You have already submitted a review for this purchase. Please edit your existing review instead.")
+
+        now_dt = datetime.now(timezone.utc)
+        review = SellerReview(
+            order_item_id=order_item.id,
+            seller_id=seller_id,
+            buyer_id=current_user.id,
+            rating=data.rating,
+            review_text=data.review_text.strip() if data.review_text else None,
+            created_at=now_dt,
+            updated_at=now_dt,
+            verified_purchase=True,
+        )
+        db.add(review)
+        db.commit()
+        db.refresh(review)
+
+        # O(1) Aggregate Update
+        update_seller_rating_on_create(db, seller_id=seller_id, rating=data.rating)
+
+        return {
+            "id": review.id,
+            "order_item_id": review.order_item_id,
+            "seller_id": review.seller_id,
+            "buyer_id": review.buyer_id,
+            "buyer_name": current_user.username or current_user.email.split("@")[0],
+            "rating": review.rating,
+            "review_text": review.review_text,
+            "created_at": review.created_at.isoformat() if review.created_at else None,
+            "updated_at": review.updated_at.isoformat() if review.updated_at else None,
+            "verified_purchase": review.verified_purchase,
+        }
+    finally:
+        db.close()
+
+
+@app.put("/reviews/{review_id}", response_model=SellerReviewResponse)
+def update_seller_review(review_id: int, data: SellerReviewUpdate, current_user: User = Depends(get_current_user)):
+    """Update an existing seller review and recompute O(1) aggregates."""
+    if not (1 <= data.rating <= 5):
+        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5 stars.")
+
+    db = SessionLocal()
+    try:
+        review = db.query(SellerReview).filter(SellerReview.id == review_id).first()
+        if not review or review.buyer_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Review not found or you do not have permission to modify it.")
+
+        old_rating = review.rating
+        new_rating = data.rating
+
+        review.rating = new_rating
+        review.review_text = data.review_text.strip() if data.review_text else None
+        review.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(review)
+
+        # O(1) Aggregate Update
+        update_seller_rating_on_update(db, seller_id=review.seller_id, old_rating=old_rating, new_rating=new_rating)
+
+        return {
+            "id": review.id,
+            "order_item_id": review.order_item_id,
+            "seller_id": review.seller_id,
+            "buyer_id": review.buyer_id,
+            "buyer_name": current_user.username or current_user.email.split("@")[0],
+            "rating": review.rating,
+            "review_text": review.review_text,
+            "created_at": review.created_at.isoformat() if review.created_at else None,
+            "updated_at": review.updated_at.isoformat() if review.updated_at else None,
+            "verified_purchase": review.verified_purchase,
+        }
+    finally:
+        db.close()
+
+
+@app.get("/sellers/{seller_id}/reviews", response_model=SellerReviewsAggregateResponse)
+def get_seller_reviews(seller_id: int, page: int = 1, limit: int = 5):
+    """Return O(1) aggregates, star distribution breakdown directly from User table, plus paginated recent reviews."""
+    db = SessionLocal()
+    try:
+        seller = db.query(User).filter(User.id == seller_id).first()
+        if not seller:
+            raise HTTPException(status_code=404, detail="Seller not found.")
+
+        avg_rating = round(getattr(seller, "average_rating", 0.0) or 0.0, 1)
+        total_revs = getattr(seller, "total_reviews", 0) or 0
+        r_sum = getattr(seller, "rating_sum", 0) or 0
+        dist = {
+            "5": getattr(seller, "five_star_count", 0) or 0,
+            "4": getattr(seller, "four_star_count", 0) or 0,
+            "3": getattr(seller, "three_star_count", 0) or 0,
+            "2": getattr(seller, "two_star_count", 0) or 0,
+            "1": getattr(seller, "one_star_count", 0) or 0,
+        }
+
+        offset = (max(1, page) - 1) * limit
+        recent_rows = db.query(SellerReview).filter(SellerReview.seller_id == seller_id).order_by(SellerReview.created_at.desc()).offset(offset).limit(limit).all()
+
+        recent_reviews = []
+        for r in recent_rows:
+            buyer_user = db.query(User).filter(User.id == r.buyer_id).first()
+            b_name = (buyer_user.username or buyer_user.email.split("@")[0]) if buyer_user else "Buyer"
+            recent_reviews.append({
+                "id": r.id,
+                "order_item_id": r.order_item_id,
+                "seller_id": r.seller_id,
+                "buyer_id": r.buyer_id,
+                "buyer_name": b_name,
+                "rating": r.rating,
+                "review_text": r.review_text,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "updated_at": r.updated_at.isoformat() if r.updated_at else None,
+                "verified_purchase": r.verified_purchase,
+            })
+
+        return {
+            "average_rating": avg_rating,
+            "total_reviews": total_revs,
+            "rating_sum": r_sum,
+            "distribution": dist,
+            "recent_reviews": recent_reviews,
+        }
+    finally:
+        db.close()
+
+
+@app.get("/orders/{order_item_id}/review", response_model=Optional[SellerReviewResponse])
+def get_order_item_review(order_item_id: int, current_user: User = Depends(get_current_user)):
+    """Fetch existing review for a specific order item belonging to current user."""
+    db = SessionLocal()
+    try:
+        r = db.query(SellerReview).filter(SellerReview.order_item_id == order_item_id, SellerReview.buyer_id == current_user.id).first()
+        if not r:
+            return None
+        return {
+            "id": r.id,
+            "order_item_id": r.order_item_id,
+            "seller_id": r.seller_id,
+            "buyer_id": r.buyer_id,
+            "buyer_name": current_user.username or current_user.email.split("@")[0],
+            "rating": r.rating,
+            "review_text": r.review_text,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "updated_at": r.updated_at.isoformat() if r.updated_at else None,
+            "verified_purchase": r.verified_purchase,
+        }
+    finally:
+        db.close()
+

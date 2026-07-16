@@ -17,6 +17,8 @@ import {
   User,
   AlertCircle,
   ArrowRight,
+  Star,
+  X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -27,6 +29,78 @@ export default function MyPurchases() {
   const { getAuthHeaders, isAuthenticated } = useAuth();
   const { addToCart, setIsCartOpen } = useCart();
   const navigate = useNavigate();
+
+  // Rate Seller Modal State
+  const [activeRateItem, setActiveRateItem] = useState(null);
+  const [reviewingExisting, setReviewingExisting] = useState(null);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [hoveredRating, setHoveredRating] = useState(0);
+  const [reviewText, setReviewText] = useState("");
+  const [submittingRate, setSubmittingRate] = useState(false);
+  const [rateError, setRateError] = useState(null);
+
+  const openRateModal = (item, existingReview = null) => {
+    setActiveRateItem(item);
+    setRateError(null);
+    if (existingReview) {
+      setReviewingExisting(existingReview);
+      setSelectedRating(existingReview.rating || 5);
+      setReviewText(existingReview.review_text || "");
+    } else {
+      setReviewingExisting(null);
+      setSelectedRating(0);
+      setReviewText("");
+    }
+  };
+
+  const closeRateModal = () => {
+    setActiveRateItem(null);
+    setReviewingExisting(null);
+    setSelectedRating(0);
+    setHoveredRating(0);
+    setReviewText("");
+    setRateError(null);
+  };
+
+  const handleSubmitReview = async () => {
+    if (selectedRating < 1 || selectedRating > 5) {
+      setRateError("Please select a rating between 1 and 5 stars.");
+      return;
+    }
+    setSubmittingRate(true);
+    setRateError(null);
+    try {
+      if (reviewingExisting) {
+        await axios.put(
+          `http://127.0.0.1:8000/reviews/${reviewingExisting.id}`,
+          {
+            rating: selectedRating,
+            review_text: reviewText.trim() || null,
+          },
+          { headers: getAuthHeaders() }
+        );
+      } else {
+        await axios.post(
+          "http://127.0.0.1:8000/reviews",
+          {
+            order_item_id: activeRateItem.order_item_id || activeRateItem.product_id,
+            rating: selectedRating,
+            review_text: reviewText.trim() || null,
+          },
+          { headers: getAuthHeaders() }
+        );
+      }
+      await fetchPurchases();
+      closeRateModal();
+    } catch (err) {
+      setRateError(
+        err.response?.data?.detail || "Failed to submit review. Please try again."
+      );
+    } finally {
+      setSubmittingRate(false);
+    }
+  };
+
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -319,6 +393,31 @@ export default function MyPurchases() {
                             <ExternalLink size={14} />
                           </button>
 
+                          {/* Rate Seller Button / Your Rating Badge */}
+                          {["SUCCESS", "Delivered"].includes(item.order_status) && (
+                            !item.user_review ? (
+                              <button
+                                onClick={() => openRateModal(item, null)}
+                                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200/80 text-amber-800 font-bold text-xs transition-all cursor-pointer shadow-2xs"
+                              >
+                                <Star size={14} className="fill-amber-500 text-amber-500" />
+                                <span>Rate Seller</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => openRateModal(item, item.user_review)}
+                                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer shadow-2xs group/rate"
+                              >
+                                <div className="flex items-center gap-0.5">
+                                  {[...Array(item.user_review.rating)].map((_, i) => (
+                                    <Star key={i} size={13} className="fill-amber-500 text-amber-500" />
+                                  ))}
+                                </div>
+                                <span className="ml-1 text-slate-600 group-hover/rate:text-indigo-600">(Edit Review)</span>
+                              </button>
+                            )
+                          )}
+
                           {/* Dynamic Buy Again button based on current listing status */}
                           {productExists && !isSold ? (
                             <button
@@ -352,6 +451,134 @@ export default function MyPurchases() {
             </AnimatePresence>
           </div>
         )}
+
+        {/* Rate Seller Modal */}
+        <AnimatePresence>
+          {activeRateItem && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 sm:p-8 max-w-lg w-full relative overflow-hidden"
+              >
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                      <Star className="fill-amber-500 text-amber-500" size={22} />
+                      <span>{reviewingExisting ? "Edit Seller Review" : "Rate Seller"}</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      For seller <span className="font-bold text-slate-700">{activeRateItem.snapshot_seller_name || activeRateItem.seller_name}</span> • Order #{activeRateItem.order_id}
+                    </p>
+                  </div>
+                  <button
+                    onClick={closeRateModal}
+                    className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {rateError && (
+                  <div className="mb-6 p-3 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-xs font-semibold flex items-center gap-2">
+                    <AlertCircle size={16} className="shrink-0" />
+                    <span>{rateError}</span>
+                  </div>
+                )}
+
+                {/* Star Selector */}
+                <div className="flex flex-col items-center justify-center py-4 my-2 bg-slate-50/80 rounded-2xl border border-slate-100">
+                  <span className="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">
+                    Select Your Rating
+                  </span>
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    {[1, 2, 3, 4, 5].map((star) => {
+                      const isSelectedOrHovered = (hoveredRating || selectedRating) >= star;
+                      return (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setSelectedRating(star)}
+                          onMouseEnter={() => setHoveredRating(star)}
+                          onMouseLeave={() => setHoveredRating(0)}
+                          className="p-1.5 sm:p-2 rounded-xl transition-all duration-200 hover:scale-125 focus:outline-none cursor-pointer"
+                        >
+                          <Star
+                            size={36}
+                            className={`transition-colors ${
+                              isSelectedOrHovered
+                                ? "fill-amber-500 text-amber-500"
+                                : "text-slate-300 hover:text-amber-300"
+                            }`}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <span className="text-sm font-extrabold text-slate-700 mt-3 h-5">
+                    {(hoveredRating || selectedRating) === 5
+                      ? "Excellent (5/5)"
+                      : (hoveredRating || selectedRating) === 4
+                      ? "Great (4/5)"
+                      : (hoveredRating || selectedRating) === 3
+                      ? "Average (3/5)"
+                      : (hoveredRating || selectedRating) === 2
+                      ? "Poor (2/5)"
+                      : (hoveredRating || selectedRating) === 1
+                      ? "Terrible (1/5)"
+                      : "Tap stars to rate"}
+                  </span>
+                </div>
+
+                {/* Optional Review Text */}
+                <div className="mt-5">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Written Review <span className="text-slate-400 font-normal">(Optional)</span>
+                  </label>
+                  <textarea
+                    value={reviewText}
+                    onChange={(e) => setReviewText(e.target.value)}
+                    placeholder="Share your experience with this seller (communication, packaging, accuracy of description)..."
+                    rows={3}
+                    className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none transition-all resize-none"
+                  />
+                </div>
+
+                <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={closeRateModal}
+                    disabled={submittingRate}
+                    className="px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSubmitReview}
+                    disabled={submittingRate || selectedRating === 0}
+                    className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-bold text-xs transition-all cursor-pointer shadow-md shadow-indigo-600/20 active:scale-95 flex items-center gap-2"
+                  >
+                    {submittingRate ? (
+                      <span>Submitting...</span>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={15} />
+                        <span>{reviewingExisting ? "Update Review" : "Submit Review"}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

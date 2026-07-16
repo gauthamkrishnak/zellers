@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Heart, MapPin, Megaphone, ShieldCheck, TrendingDown } from "lucide-react";
+import { Heart, MapPin, Megaphone, ShieldCheck, TrendingDown, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useWishlist } from "../context/WishlistContext";
@@ -146,6 +146,14 @@ function ProductCard(props) {
             <p className="text-xs font-medium text-slate-500 truncate">
               {location}
             </p>
+          </div>
+
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-500 mt-2.5 pt-2 border-t border-slate-100/80">
+            <span className="truncate max-w-[120px]">By {props.seller_name || "Admin"}</span>
+            <div className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 font-bold text-[11px]">
+              <Star size={11} className="fill-amber-500 text-amber-500" />
+              <span>{props.seller_rating && props.seller_rating > 0 ? Number(props.seller_rating).toFixed(1) : "New"}</span>
+            </div>
           </div>
         </div>
 

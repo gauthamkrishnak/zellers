@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict
 from pydantic import BaseModel, EmailStr
 
 
@@ -81,6 +81,10 @@ class ProductResponse(BaseModel):
     boost_end_date: Optional[Union[datetime, str]] = None
     active_boost_id: Optional[int] = None
     is_active_boost: Optional[bool] = False
+    seller_rating: Optional[float] = 0.0
+    seller_reviews_count: Optional[int] = 0
+    seller_rating_distribution: Optional[Dict[str, int]] = None
+    seller_joined_date: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -200,4 +204,44 @@ class BoostVerifyRequest(BaseModel):
     razorpay_signature: str
 
 
-
+class SellerReviewCreate(BaseModel):
+    order_item_id: int
+    rating: int
+    review_text: Optional[str] = None
+
+
+class SellerReviewUpdate(BaseModel):
+    rating: int
+    review_text: Optional[str] = None
+
+
+class SellerReviewResponse(BaseModel):
+    id: int
+    order_item_id: int
+    seller_id: int
+    buyer_id: int
+    buyer_name: str
+    rating: int
+    review_text: Optional[str] = None
+    created_at: Optional[Union[datetime, str]] = None
+    updated_at: Optional[Union[datetime, str]] = None
+    verified_purchase: bool = True
+
+    class Config:
+        from_attributes = True
+
+
+class RatingDistribution(BaseModel):
+    five_stars: int
+    four_stars: int
+    three_stars: int
+    two_stars: int
+    one_star: int
+
+
+class SellerReviewsAggregateResponse(BaseModel):
+    average_rating: float
+    total_reviews: int
+    rating_sum: int
+    distribution: Dict[str, int]
+    recent_reviews: List[SellerReviewResponse]

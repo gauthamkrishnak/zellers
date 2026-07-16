@@ -8,10 +8,13 @@ function Loader({
   margin = 2,
   loading = true,
   className = "",
+  fullHeight = true,
 }) {
   return (
     <div
-      className={`flex items-center justify-center ${className}`}
+      className={`flex flex-col items-center justify-center ${
+        fullHeight ? "min-h-[calc(100vh-220px)] w-full" : ""
+      } ${className}`}
       role="status"
       aria-label="Loading"
     >

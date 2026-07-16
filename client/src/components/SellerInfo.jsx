@@ -20,12 +20,17 @@ export default function SellerInfo({ product }) {
   const rawSellerName = product?.seller_name || "Admin";
   const displaySellerName = isOwnListing ? "You" : rawSellerName;
 
-  // Future-ready structured props/defaults so new features can be added without redesigning
-  const sellerRating = product?.seller_rating || "4.9";
+  // Live O(1) seller rating, reviews count, and joined date
+  const sellerRating = (product?.seller_rating && product.seller_rating > 0)
+    ? Number(product.seller_rating).toFixed(1)
+    : "New";
+  const sellerReviewsCount = product?.seller_reviews_count || 0;
+  const rawDate = product?.seller_joined_date;
+  const memberSince = rawDate
+    ? new Date(rawDate).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+    : "Jul 2025";
   const isVerified = product?.is_verified_seller !== false;
-  // const memberSince = product?.member_since || "Oct 2023";
   const totalListings = product?.total_listings || "12";
-  const responseRate = product?.response_rate || "98%";
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200/60 p-6 shadow-sm flex flex-col gap-5">
@@ -63,13 +68,13 @@ export default function SellerInfo({ product }) {
             )}
           </div>
 
-          {/* <p className="text-slate-400 text-xs font-medium mt-1">
+          <p className="text-slate-400 text-xs font-medium mt-1">
             Member since {memberSince}
-          </p> */}
+          </p>
         </div>
       </div>
 
-      {/* Structured Stats Grid ready for Seller Rating, Total Listings, and Response Rate */}
+      {/* Structured Stats Grid displaying live Seller Rating & Reviews */}
       <div className="grid grid-cols-3 gap-2 py-3 px-3.5 bg-slate-50/80 rounded-2xl border border-slate-100 text-center">
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-1 text-amber-500 font-bold text-xs">
@@ -77,7 +82,7 @@ export default function SellerInfo({ product }) {
             <span>{sellerRating}</span>
           </div>
           <span className="text-[10px] text-slate-400 font-semibold mt-0.5">
-            Rating
+            {sellerReviewsCount} {sellerReviewsCount === 1 ? "Review" : "Reviews"}
           </span>
         </div>
 
@@ -94,7 +99,7 @@ export default function SellerInfo({ product }) {
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-1 text-emerald-600 font-bold text-xs">
             <MessageSquare size={13} className="text-emerald-500" />
-            <span>{responseRate}</span>
+            <span>98%</span>
           </div>
           <span className="text-[10px] text-slate-400 font-semibold mt-0.5">
             Response

@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, UniqueConstraint, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, UniqueConstraint, DateTime, Float
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -34,6 +34,17 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     username = Column(String, unique=True, index=True, nullable=True)
     hashed_password = Column(String, nullable=False)
+
+    # O(1) Seller Rating & Review Aggregates
+    average_rating = Column(Float, default=0.0)
+    total_reviews = Column(Integer, default=0)
+    rating_sum = Column(Integer, default=0)
+    one_star_count = Column(Integer, default=0)
+    two_star_count = Column(Integer, default=0)
+    three_star_count = Column(Integer, default=0)
+    four_star_count = Column(Integer, default=0)
+    five_star_count = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class Wishlist(Base):
@@ -126,4 +137,31 @@ class ProductBoost(Base):
     product = relationship("Product", foreign_keys=[product_id])
     seller = relationship("User", foreign_keys=[seller_id])
     payment_record = relationship("Payment", foreign_keys=[payment_id])
+
+
+class SellerReview(Base):
+    __tablename__ = "seller_reviews"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_item_id = Column(Integer, ForeignKey("order_items.id"), unique=True, nullable=False, index=True)
+    seller_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    buyer_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    rating = Column(Integer, nullable=False)
+    review_text = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    verified_purchase = Column(Boolean, default=True)
+
+    # Future-ready extensible columns
+    seller_reply = Column(String, nullable=True)
+    seller_reply_created_at = Column(DateTime(timezone=True), nullable=True)
+    likes_count = Column(Integer, default=0)
+    photos_json = Column(String, nullable=True)
+    is_moderated = Column(Boolean, default=False)
+    report_count = Column(Integer, default=0)
+
+    order_item = relationship("OrderItem", foreign_keys=[order_item_id])
+    seller = relationship("User", foreign_keys=[seller_id])
+    buyer = relationship("User", foreign_keys=[buyer_id])
+
 

@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   AlertCircle,
   TrendingDown,
+  Star,
 } from "lucide-react";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
@@ -31,6 +32,7 @@ function ProductDetails() {
   const { getAuthHeaders, isAuthenticated } = useAuth();
 
   const [product, setProduct] = useState(null);
+  const [recentReviews, setRecentReviews] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,6 +44,17 @@ function ProductDetails() {
         );
 
         setProduct(response.data);
+
+        if (response.data.seller_id) {
+          try {
+            const revRes = await axios.get(
+              `http://127.0.0.1:8000/sellers/${response.data.seller_id}/reviews?limit=5`
+            );
+            setRecentReviews(revRes.data.recent_reviews || []);
+          } catch (e) {
+            console.error("Could not fetch seller reviews:", e);
+          }
+        }
       } catch (error) {
         console.error("Error fetching product:", error);
       } finally {
@@ -341,6 +354,88 @@ function ProductDetails() {
           </div>
 
           <SellerInfo product={product} />
+
+          {/* Amazon-style Rating Distribution Breakdown */}
+          {product && product.seller_rating_distribution && (
+            <div className="bg-white rounded-3xl border border-slate-200/60 p-6 shadow-sm flex flex-col gap-4">
+              <h3 className="font-bold text-slate-800 text-base flex items-center justify-between">
+                <span>Rating Distribution</span>
+                <span className="text-xs font-semibold text-slate-500">
+                  {product.seller_reviews_count || 0} total ratings
+                </span>
+              </h3>
+
+              <div className="flex flex-col gap-2.5">
+                {[5, 4, 3, 2, 1].map((stars) => {
+                  const count = product.seller_rating_distribution[String(stars)] || 0;
+                  const total = product.seller_reviews_count || 0;
+                  const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                  return (
+                    <div key={stars} className="flex items-center gap-3 text-xs font-bold text-slate-700">
+                      <div className="flex items-center gap-1 w-14 shrink-0">
+                        <span>{stars}</span>
+                        <Star size={12} className="fill-amber-500 text-amber-500" />
+                      </div>
+                      <div className="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                        <div
+                          className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                      <span className="w-10 text-right text-slate-400 font-semibold">{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Recent Seller Reviews List */}
+          <div className="bg-white rounded-3xl border border-slate-200/60 p-6 shadow-sm flex flex-col gap-4">
+            <h3 className="font-bold text-slate-800 text-base flex items-center justify-between">
+              <span>Recent Seller Reviews</span>
+              <span className="text-xs font-semibold text-indigo-600">Verified Purchases</span>
+            </h3>
+
+            {recentReviews.length > 0 ? (
+              <div className="flex flex-col gap-4 divide-y divide-slate-100">
+                {recentReviews.map((r) => (
+                  <div key={r.id} className="pt-4 first:pt-0 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-800 text-xs">{r.buyer_name}</span>
+                        {r.verified_purchase && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200/60 text-emerald-700 font-bold text-[10px]">
+                            <ShieldCheck size={11} className="text-emerald-600 shrink-0" />
+                            <span>Verified Purchase</span>
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-slate-400 font-medium">
+                        {r.created_at ? new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-0.5 text-amber-500">
+                      {[...Array(r.rating)].map((_, idx) => (
+                        <Star key={idx} size={12} className="fill-amber-500 text-amber-500" />
+                      ))}
+                    </div>
+
+                    {r.review_text && (
+                      <p className="text-xs text-slate-600 leading-relaxed font-normal bg-slate-50/60 p-3 rounded-xl border border-slate-100/80">
+                        "{r.review_text}"
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-6 text-center text-slate-400 text-xs font-medium">
+                No reviews yet for this seller. Complete a purchase to leave the first review!
+              </div>
+            )}
+          </div>
 
           <div className="bg-indigo-50/50 border border-indigo-100 rounded-3xl p-6 flex flex-col gap-3">
             <h3 className="font-bold text-indigo-900 text-sm flex items-center gap-2">
