@@ -22,7 +22,7 @@ class Product(Base):
     boost_status = Column(String, nullable=True, default=None)
     boost_start_date = Column(DateTime(timezone=True), nullable=True)
     boost_end_date = Column(DateTime(timezone=True), nullable=True)
-    active_boost_id = Column(Integer, ForeignKey("product_boosts.id"), nullable=True)
+    active_boost_id = Column(Integer, ForeignKey("product_boosts.id", ondelete="SET NULL"), nullable=True)
     seller = relationship("User", foreign_keys=[user_id])
 
 
@@ -40,7 +40,7 @@ class Wishlist(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
 
     __table_args__ = (
         UniqueConstraint("user_id", "product_id", name="uq_wishlist_user_product"),
@@ -51,7 +51,7 @@ class Cart(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
 
     __table_args__ = (
         UniqueConstraint("user_id", "product_id", name="uq_cart_user_product"),
@@ -74,7 +74,7 @@ class OrderItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
     price = Column(Integer, nullable=False)
     title = Column(String, nullable=True)
 
@@ -112,7 +112,7 @@ class ProductBoost(Base):
     __tablename__ = "product_boosts"
 
     id = Column(Integer, primary_key=True, index=True)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False, index=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
     seller_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     payment_id = Column(Integer, ForeignKey("payments.id"), nullable=False, index=True)
     boost_plan = Column(String, default="basic", nullable=False)

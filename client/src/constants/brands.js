@@ -1,4 +1,17 @@
 // Canonical Category -> Brand Mapping for Frontend components
+import {
+  Layers,
+  Smartphone,
+  Laptop,
+  Car,
+  Bike,
+  Sofa,
+  Shirt,
+  BookOpen,
+  Trophy,
+  Home,
+  Package,
+} from "lucide-react";
 
 export const CATEGORIES = [
   "Mobiles",
@@ -11,6 +24,34 @@ export const CATEGORIES = [
   "Sports",
   "Home Appliances",
   "Others",
+];
+
+export const CATEGORY_ICONS = {
+  All: Layers,
+  Mobiles: Smartphone,
+  Electronics: Laptop,
+  Vehicles: Car,
+  Cycles: Bike,
+  Furniture: Sofa,
+  Fashion: Shirt,
+  Books: BookOpen,
+  Sports: Trophy,
+  "Home Appliances": Home,
+  Others: Package,
+};
+
+export const CATEGORY_ITEMS = [
+  { name: "All", icon: Layers },
+  { name: "Mobiles", icon: Smartphone },
+  { name: "Electronics", icon: Laptop },
+  { name: "Vehicles", icon: Car },
+  { name: "Cycles", icon: Bike },
+  { name: "Furniture", icon: Sofa },
+  { name: "Fashion", icon: Shirt },
+  { name: "Books", icon: BookOpen },
+  { name: "Sports", icon: Trophy },
+  { name: "Home Appliances", icon: Home },
+  { name: "Others", icon: Package },
 ];
 
 export const CATEGORY_BRAND_MAPPING = {

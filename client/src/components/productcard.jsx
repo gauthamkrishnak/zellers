@@ -59,10 +59,10 @@ function ProductCard(props) {
       onClick={handleCardClick}
       className={
         isSold
-          ? "bg-white rounded-2xl border border-slate-200/70 overflow-hidden transition-all duration-300 cursor-not-allowed flex flex-col h-full"
+          ? "bg-white rounded-2xl border shadow-md border-slate-200/70 overflow-hidden transition-all duration-300 cursor-not-allowed flex flex-col h-full"
           : props.is_active_boost
-            ? "group bg-white rounded-2xl border-2 border-amber-300 overflow-hidden hover:shadow-xl hover:shadow-slate-100 transition-all duration-300 cursor-pointer flex flex-col h-full hover:-translate-y-1"
-            : "group bg-white rounded-2xl border border-slate-200/50 overflow-hidden hover:shadow-xl hover:shadow-slate-100 hover:border-slate-300/40 transition-all duration-300 cursor-pointer flex flex-col h-full hover:-translate-y-1"
+            ? "group bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl hover:shadow-slate-100 transition-all duration-300 cursor-pointer flex flex-col h-full hover:-translate-y-1"
+            : "group bg-white rounded-2xl shadow-md border border-slate-200/50 overflow-hidden hover:shadow-xl hover:shadow-slate-100 hover:border-slate-300/40 transition-all duration-300 cursor-pointer flex flex-col h-full hover:-translate-y-1"
       }
     >
       <div className="relative h-60 bg-slate-50 flex items-center justify-center p-6 overflow-hidden">

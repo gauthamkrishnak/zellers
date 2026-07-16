@@ -84,7 +84,7 @@ class ProductResponse(BaseModel):
 class OrderItemResponse(BaseModel):
     id: int
     order_id: int
-    product_id: int
+    product_id: Optional[int] = None
     price: int
     title: Optional[str] = None
     snapshot_product_title: Optional[str] = None
@@ -112,7 +112,7 @@ class PurchaseHistoryItem(BaseModel):
     payment_method: str
     payment_status: str
     order_status: str
-    product_id: int
+    product_id: Optional[int] = None
     product_title: str
     brand: str
     category: str

@@ -117,6 +117,29 @@ with engine.connect() as conn:
         for col_name, col_type in snapshot_cols:
             conn.execute(text(f"ALTER TABLE order_items ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
 
+        fk_queries = [
+            "ALTER TABLE order_items ALTER COLUMN product_id DROP NOT NULL",
+            "ALTER TABLE order_items DROP CONSTRAINT IF EXISTS order_items_product_id_fkey",
+            "ALTER TABLE order_items ADD CONSTRAINT order_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL",
+            "ALTER TABLE product_boosts DROP CONSTRAINT IF EXISTS product_boosts_product_id_fkey",
+            "ALTER TABLE product_boosts ADD CONSTRAINT product_boosts_product_id_fkey FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE",
+            "ALTER TABLE products DROP CONSTRAINT IF EXISTS products_active_boost_id_fkey",
+            "ALTER TABLE products ADD CONSTRAINT products_active_boost_id_fkey FOREIGN KEY (active_boost_id) REFERENCES product_boosts(id) ON DELETE SET NULL",
+            "ALTER TABLE wishlists DROP CONSTRAINT IF EXISTS wishlists_product_id_fkey",
+            "ALTER TABLE wishlists ADD CONSTRAINT wishlists_product_id_fkey FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE",
+            "ALTER TABLE carts DROP CONSTRAINT IF EXISTS carts_product_id_fkey",
+            "ALTER TABLE carts ADD CONSTRAINT carts_product_id_fkey FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE",
+            "ALTER TABLE wishlist_items DROP CONSTRAINT IF EXISTS wishlist_items_product_id_fkey",
+            "ALTER TABLE wishlist_items ADD CONSTRAINT wishlist_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE",
+            "ALTER TABLE cart_items DROP CONSTRAINT IF EXISTS cart_items_product_id_fkey",
+            "ALTER TABLE cart_items ADD CONSTRAINT cart_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE",
+        ]
+        for fkq in fk_queries:
+            try:
+                conn.execute(text(fkq))
+            except Exception:
+                pass
+
         conn.commit()
     except Exception as e:
         print("Migration note:", e)
@@ -750,11 +773,30 @@ def delete_product(product_id: int, current_user: User = Depends(get_current_use
                 detail="You do not have permission to delete this listing.",
             )
 
+        product.active_boost_id = None
+        db.flush()
+
         db.query(Wishlist).filter(Wishlist.product_id == product_id).delete()
         db.query(Cart).filter(Cart.product_id == product_id).delete()
+        db.query(ProductBoost).filter(ProductBoost.product_id == product_id).delete()
+        try:
+            conn = db.connection()
+            conn.execute(text("DELETE FROM wishlist_items WHERE product_id = :pid"), {"pid": product_id})
+            conn.execute(text("DELETE FROM cart_items WHERE product_id = :pid"), {"pid": product_id})
+        except Exception:
+            pass
+
+        db.query(OrderItem).filter(OrderItem.product_id == product_id).update({"product_id": None})
+
         db.delete(product)
         db.commit()
         return {"success": True, "message": "Listing deleted successfully."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print("Error deleting product:", e)
+        raise HTTPException(status_code=500, detail=f"Failed to delete listing: {str(e)}")
     finally:
         db.close()
 

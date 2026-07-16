@@ -5,9 +5,18 @@ import FilterSidebar from "../components/FilterSidebar";
 import FilterDrawer from "../components/FilterDrawer";
 import Loader from "../components/Loader";
 import { useOutletContext } from "react-router-dom";
-import { Search, Filter, X, RotateCcw, SlidersHorizontal, Sparkles, TrendingDown } from "lucide-react";
+import {
+  Search,
+  Filter,
+  X,
+  RotateCcw,
+  SlidersHorizontal,
+  Sparkles,
+  TrendingDown,
+} from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
+import { CATEGORY_ITEMS } from "../constants/brands";
 
 function Home() {
   const { searchTerm } = useOutletContext();
@@ -44,10 +53,17 @@ function Home() {
           search: debouncedSearch || undefined,
           brand: filters.brands?.length ? filters.brands.join(",") : undefined,
           location: filters.location || undefined,
-          condition: filters.conditions?.length ? filters.conditions.join(",") : undefined,
-          min_price: filters.minPrice !== "" ? Number(filters.minPrice) : undefined,
-          max_price: filters.maxPrice !== "" ? Number(filters.maxPrice) : undefined,
-          availability: filters.availability !== "available" ? filters.availability : undefined,
+          condition: filters.conditions?.length
+            ? filters.conditions.join(",")
+            : undefined,
+          min_price:
+            filters.minPrice !== "" ? Number(filters.minPrice) : undefined,
+          max_price:
+            filters.maxPrice !== "" ? Number(filters.maxPrice) : undefined,
+          availability:
+            filters.availability !== "available"
+              ? filters.availability
+              : undefined,
           deals_only: filters.dealsOnly ? true : undefined,
           sort: filters.sort !== "newest" ? filters.sort : undefined,
         },
@@ -73,7 +89,7 @@ function Home() {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
       setIsSearching(false);
-    }, 500);
+    }, 200);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
@@ -130,7 +146,7 @@ function Home() {
 
       <div
         id="featured-products-section"
-        className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row gap-8 scroll-mt-24"
+        className="  w-full px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row gap-8 scroll-mt-24"
       >
         {/* Desktop Permanent Left Sidebar */}
         <aside className="hidden lg:block w-80 shrink-0 sticky top-24 self-start">
@@ -152,6 +168,39 @@ function Home() {
 
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col min-w-0">
+          {/* Horizontal Category Navigation Bar */}
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-4 mb-5 border-b border-slate-200/70 custom-scrollbar select-none">
+            {CATEGORY_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const isSelected = filters.category === item.name;
+              return (
+                <button
+                  key={item.name}
+                  onClick={() =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      category: item.name,
+                      brands: [],
+                    }))
+                  }
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-extrabold shrink-0 transition-all duration-200 cursor-pointer border ${
+                    isSelected
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/25 scale-[1.02]"
+                      : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200/80 hover:border-indigo-200 shadow-2xs"
+                  }`}
+                >
+                  <Icon
+                    size={16}
+                    className={`shrink-0 ${
+                      isSelected ? "text-white" : "text-indigo-600"
+                    }`}
+                  />
+                  <span>{item.name}</span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* Header & Mobile/Tablet Filter Toggle Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200/70 pb-4 mb-5 gap-4">
             <div>
@@ -163,12 +212,17 @@ function Home() {
                 </span>
                 {filters.dealsOnly && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
-                    <TrendingDown size={13} className="text-emerald-600 shrink-0" /> Deals
+                    <TrendingDown
+                      size={13}
+                      className="text-emerald-600 shrink-0"
+                    />{" "}
+                    Deals
                   </span>
                 )}
               </h2>
               <p className="text-xs font-medium text-slate-500 mt-0.5">
-                Showing {products.length} {products.length === 1 ? "item" : "items"} available right now
+                Showing {products.length}{" "}
+                {products.length === 1 ? "item" : "items"} available right now
               </p>
             </div>
 
@@ -200,7 +254,13 @@ function Home() {
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-100 text-indigo-900 font-bold text-xs shadow-2xs">
                   Category: {filters.category}
                   <button
-                    onClick={() => setFilters((prev) => ({ ...prev, category: "All", brands: [] }))}
+                    onClick={() =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        category: "All",
+                        brands: [],
+                      }))
+                    }
                     className="hover:bg-indigo-200/80 rounded-full p-0.5 transition cursor-pointer"
                     title="Remove category"
                   >
@@ -229,7 +289,9 @@ function Home() {
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-xs shadow-2xs">
                   Location: {filters.location}
                   <button
-                    onClick={() => setFilters((prev) => ({ ...prev, location: "" }))}
+                    onClick={() =>
+                      setFilters((prev) => ({ ...prev, location: "" }))
+                    }
                     className="hover:bg-emerald-200/80 rounded-full p-0.5 transition cursor-pointer"
                     title="Remove location"
                   >
@@ -256,9 +318,16 @@ function Home() {
 
               {(filters.minPrice || filters.maxPrice) && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-bold text-xs shadow-2xs">
-                  Price: {filters.minPrice ? `₹${filters.minPrice}` : "₹0"} - {filters.maxPrice ? `₹${filters.maxPrice}` : "Max"}
+                  Price: {filters.minPrice ? `₹${filters.minPrice}` : "₹0"} -{" "}
+                  {filters.maxPrice ? `₹${filters.maxPrice}` : "Max"}
                   <button
-                    onClick={() => setFilters((prev) => ({ ...prev, minPrice: "", maxPrice: "" }))}
+                    onClick={() =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        minPrice: "",
+                        maxPrice: "",
+                      }))
+                    }
                     className="hover:bg-amber-200/80 rounded-full p-0.5 transition cursor-pointer"
                     title="Remove price range"
                   >
@@ -269,10 +338,15 @@ function Home() {
 
               {filters.dealsOnly && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-semibold text-xs">
-                  <TrendingDown size={13} className="text-emerald-600 shrink-0" />
+                  <TrendingDown
+                    size={13}
+                    className="text-emerald-600 shrink-0"
+                  />
                   <span>Attractive Deals</span>
                   <button
-                    onClick={() => setFilters((prev) => ({ ...prev, dealsOnly: false }))}
+                    onClick={() =>
+                      setFilters((prev) => ({ ...prev, dealsOnly: false }))
+                    }
                     className="hover:bg-emerald-100 rounded-full p-0.5 transition cursor-pointer text-emerald-600 ml-1"
                     title="Remove deals filter"
                   >
@@ -283,9 +357,16 @@ function Home() {
 
               {filters.availability !== "available" && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-200 text-slate-800 font-bold text-xs shadow-2xs capitalize">
-                  {filters.availability === "all" ? "Include Sold" : "Sold Only"}
+                  {filters.availability === "all"
+                    ? "Include Sold"
+                    : "Sold Only"}
                   <button
-                    onClick={() => setFilters((prev) => ({ ...prev, availability: "available" }))}
+                    onClick={() =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        availability: "available",
+                      }))
+                    }
                     className="hover:bg-slate-300 rounded-full p-0.5 transition cursor-pointer"
                     title="Reset availability"
                   >
@@ -323,7 +404,8 @@ function Home() {
               </h3>
 
               <p className="text-slate-500 text-sm max-w-sm mt-2">
-                We couldn't find any products matching your exact filter combination. Try clearing some chips or resetting your search.
+                We couldn't find any products matching your exact filter
+                combination. Try clearing some chips or resetting your search.
               </p>
 
               <button
