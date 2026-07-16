@@ -76,7 +76,7 @@ function Login() {
             </h1>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-400/20 text-indigo-300 text-xs font-semibold tracking-wide uppercase mb-10">
               <Sparkles size={12} />
-              <span>Kochi's Premier Marketplace</span>
+              <span>Premier Marketplace</span>
             </div>
           </motion.div>
 

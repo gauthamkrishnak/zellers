@@ -55,6 +55,11 @@ class ProductResponse(BaseModel):
     id: int
     title: str
     price: int
+    highest_price: int
+    current_price: int
+    is_price_drop: bool
+    savings: int
+    discount_percentage: int
     type: str
     category: str
     location: str

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Heart, MapPin, Megaphone, ShieldCheck } from "lucide-react";
+import { Heart, MapPin, Megaphone, ShieldCheck, TrendingDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useWishlist } from "../context/WishlistContext";
@@ -11,6 +11,7 @@ function ProductCard(props) {
   const { getAuthHeaders, isAuthenticated } = useAuth();
 
   const { id, title, price, image, location, listed, condition, brand } = props;
+  const currentPrice = props.current_price !== undefined ? props.current_price : price;
   const isSold = Boolean(props.is_sold || props.status === "sold");
 
   const [isWishlisted, setIsWishlisted] = useState(props.is_wishlisted);
@@ -66,8 +67,14 @@ function ProductCard(props) {
       }
     >
       <div className="relative h-60 bg-slate-50 flex items-center justify-center p-6 overflow-hidden">
-        {/* Top Badges (Sponsored & Brand New) */}
+        {/* Top Badges (Price Drop, Sponsored & Brand New) */}
         <div className="absolute top-3.5 left-3.5 z-10 flex flex-col gap-1.5 items-start">
+          {!isSold && props.is_price_drop && (
+            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5">
+              <TrendingDown size={13} className="text-emerald-600 shrink-0" />
+              <span>Price Drop</span>
+            </span>
+          )}
           {!isSold && props.is_active_boost && (
             <span className="bg-amber-50 text-amber-800 border border-amber-200/80 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5">
               <Megaphone size={13} className="text-amber-600 shrink-0" />
@@ -142,18 +149,34 @@ function ProductCard(props) {
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-auto">
-          <p
-            className={`font-extrabold text-lg ${
-              isSold ? "text-slate-400" : "text-indigo-600"
-            }`}
-          >
-            ₹{price.toLocaleString("en-IN")}
-          </p>
+        <div className="border-t border-slate-100 pt-3 mt-auto">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col">
+              {props.is_price_drop && props.highest_price > currentPrice && (
+                <span className="text-xs text-slate-400 line-through font-semibold">
+                  ₹{Number(props.highest_price).toLocaleString("en-IN")}
+                </span>
+              )}
+              <p
+                className={`font-extrabold text-lg leading-tight ${
+                  isSold ? "text-slate-400" : "text-indigo-600"
+                }`}
+              >
+                ₹{Number(currentPrice).toLocaleString("en-IN")}
+              </p>
+            </div>
 
-          <span className="text-slate-400 text-[11px] font-medium bg-slate-100 px-2.5 py-1 rounded-full">
-            {isSold ? "Sold" : listed}
-          </span>
+            <span className="text-slate-400 text-[11px] font-medium bg-slate-100 px-2.5 py-1 rounded-full">
+              {isSold ? "Sold" : listed}
+            </span>
+          </div>
+          {!isSold && props.is_price_drop && props.savings > 0 && (
+            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-bold text-emerald-700">
+              <span>Save ₹{Number(props.savings).toLocaleString("en-IN")}</span>
+              <span>•</span>
+              <span>{props.discount_percentage}% OFF</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

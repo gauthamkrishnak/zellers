@@ -1,5 +1,11 @@
 import React from "react";
-import { UserCheck, Star, Package, MessageSquare, UserRound } from "lucide-react";
+import {
+  UserCheck,
+  Star,
+  Package,
+  MessageSquare,
+  UserRound,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 export default function SellerInfo({ product }) {
@@ -17,7 +23,7 @@ export default function SellerInfo({ product }) {
   // Future-ready structured props/defaults so new features can be added without redesigning
   const sellerRating = product?.seller_rating || "4.9";
   const isVerified = product?.is_verified_seller !== false;
-  const memberSince = product?.member_since || "Oct 2023";
+  // const memberSince = product?.member_since || "Oct 2023";
   const totalListings = product?.total_listings || "12";
   const responseRate = product?.response_rate || "98%";
 
@@ -57,9 +63,9 @@ export default function SellerInfo({ product }) {
             )}
           </div>
 
-          <p className="text-slate-400 text-xs font-medium mt-1">
+          {/* <p className="text-slate-400 text-xs font-medium mt-1">
             Member since {memberSince}
-          </p>
+          </p> */}
         </div>
       </div>
 

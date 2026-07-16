@@ -14,6 +14,7 @@ import {
   CreditCard,
   ShoppingBag,
   AlertCircle,
+  TrendingDown,
 } from "lucide-react";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
@@ -231,9 +232,33 @@ function ProductDetails() {
               )}
             </div>
 
-            <span className="text-3xl font-black text-indigo-600">
-              ₹{product.price.toLocaleString("en-IN")}
-            </span>
+            {!isSold && product.is_price_drop ? (
+              <div className="flex flex-col gap-2.5 my-1">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <TrendingDown size={14} className="text-emerald-600 shrink-0" />
+                    <span>Price Drop</span>
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-3">
+                  <span className="text-3xl font-black text-indigo-600">
+                    ₹{Number(product.current_price !== undefined ? product.current_price : product.price).toLocaleString("en-IN")}
+                  </span>
+                  <span className="text-lg font-semibold text-slate-400 line-through">
+                    ₹{Number(product.highest_price).toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm font-extrabold text-emerald-700">
+                  <span>You Save ₹{Number(product.savings).toLocaleString("en-IN")}</span>
+                  <span>•</span>
+                  <span>{product.discount_percentage}% OFF</span>
+                </div>
+              </div>
+            ) : (
+              <span className="text-3xl font-black text-indigo-600">
+                ₹{Number(product.current_price !== undefined ? product.current_price : product.price).toLocaleString("en-IN")}
+              </span>
+            )}
 
             <div className="flex flex-col gap-2 border-t border-b border-slate-100 py-4 text-sm text-slate-500 font-medium">
               <div className="flex items-center gap-2">

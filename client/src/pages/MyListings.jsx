@@ -17,6 +17,7 @@ import {
   History,
   Clock,
   Loader2,
+  TrendingDown,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import SellItemModal from "../components/SellItemModal";
@@ -308,6 +309,13 @@ export default function MyListings() {
                       )
                     )}
 
+                    {!isSold && item.is_price_drop && (
+                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                        <TrendingDown size={13} className="text-emerald-600 shrink-0" />
+                        <span>Price Drop Active</span>
+                      </span>
+                    )}
+
                     {item.is_active_boost ? (
                       <span className="bg-amber-50 text-amber-800 border border-amber-200/80 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5">
                         <Megaphone
@@ -380,9 +388,21 @@ export default function MyListings() {
                       <span className="text-[10px] uppercase font-bold text-slate-400 block">
                         Price
                       </span>
-                      <span className="text-xl font-black text-indigo-600">
-                        ₹{Number(item.price).toLocaleString("en-IN")}
-                      </span>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xl font-black text-indigo-600">
+                          ₹{Number(item.current_price !== undefined ? item.current_price : item.price).toLocaleString("en-IN")}
+                        </span>
+                        {!isSold && item.is_price_drop && item.highest_price > (item.current_price !== undefined ? item.current_price : item.price) && (
+                          <span className="text-xs text-slate-400 line-through font-semibold">
+                            ₹{Number(item.highest_price).toLocaleString("en-IN")}
+                          </span>
+                        )}
+                      </div>
+                      {!isSold && item.is_price_drop && item.savings > 0 && (
+                        <span className="text-[11px] font-bold text-emerald-700 block mt-0.5">
+                          Save ₹{Number(item.savings).toLocaleString("en-IN")} ({item.discount_percentage}% OFF)
+                        </span>
+                      )}
                     </div>
 
                     {/* Actions */}

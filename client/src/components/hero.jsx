@@ -39,7 +39,7 @@ function Hero({ onProductAdded }) {
             {/* Sparkles pill tag */}
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-400/20 text-indigo-300 text-[11px] font-semibold tracking-wide uppercase mb-3.5">
               <Sparkles size={13} className="text-indigo-400" />
-              <span>Kochi's Premier Marketplace</span>
+              <span> Premier Marketplace</span>
             </div>
 
             <h1 className="text-white text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight">
@@ -78,7 +78,10 @@ function Hero({ onProductAdded }) {
                 }}
                 className="w-full sm:w-auto border border-indigo-400/40 hover:border-indigo-400/80 bg-indigo-500/15 hover:bg-indigo-500/25 text-white font-bold text-xs sm:text-sm px-6 py-2.5 sm:py-3 rounded-xl backdrop-blur-sm shadow-lg shadow-indigo-500/10 hover:shadow-indigo-500/25 hover:scale-[1.02] active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer group/sell"
               >
-                <PlusCircle size={16} className="text-indigo-300 group-hover/sell:rotate-90 transition-transform duration-300 shrink-0" />
+                <PlusCircle
+                  size={16}
+                  className="text-indigo-300 group-hover/sell:rotate-90 transition-transform duration-300 shrink-0"
+                />
                 <span>Start Selling</span>
               </button>
             </div>

@@ -62,6 +62,8 @@ with engine.connect() as conn:
         conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS boost_start_date TIMESTAMP WITH TIME ZONE NULL DEFAULT NULL"))
         conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS boost_end_date TIMESTAMP WITH TIME ZONE NULL DEFAULT NULL"))
         conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS active_boost_id INTEGER NULL DEFAULT NULL"))
+        conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS highest_price INTEGER NULL"))
+        conn.execute(text("UPDATE products SET highest_price = price WHERE highest_price IS NULL OR highest_price < price"))
         conn.execute(text("UPDATE products SET is_sold = TRUE WHERE status = 'sold' AND (is_sold IS NULL OR is_sold = FALSE)"))
 
         conn.execute(text("UPDATE products SET user_id = 1 WHERE user_id IS NULL"))
@@ -275,10 +277,23 @@ def serialize_product(p: Product, is_wishlisted: Optional[bool] = None) -> dict:
     if "ago" in clean_listed.lower() or clean_listed.lower() in ("yesterday", "just now"):
         clean_listed = "15 Jul 2026, 02:30 PM"
 
+    curr_price = int(p.price or 0)
+    high_price = int(getattr(p, "highest_price", None) or curr_price)
+    if high_price < curr_price:
+        high_price = curr_price
+    is_drop = (curr_price < high_price) and (high_price > 0)
+    savings_amt = (high_price - curr_price) if is_drop else 0
+    discount_pct = int(round((savings_amt / high_price) * 100)) if (is_drop and high_price > 0) else 0
+
     data = {
         "id": p.id,
         "title": p.title,
         "price": p.price,
+        "highest_price": high_price,
+        "current_price": curr_price,
+        "is_price_drop": is_drop,
+        "savings": savings_amt,
+        "discount_percentage": discount_pct,
         "type": p.type,
         "category": p.type,
         "location": p.location,
@@ -486,7 +501,7 @@ def get_products(
         query = query.filter((Product.is_sold == True) | (Product.status == "sold"))
 
     if deals_only:
-        query = query.filter(or_(Product.price <= 25000, and_(Product.condition == "Brand New", Product.price <= 45000)))
+        query = query.filter(Product.highest_price > Product.price, Product.highest_price.isnot(None), Product.highest_price > 0)
 
     now_utc = datetime.now(timezone.utc)
     is_active_boost_expr = case(
@@ -513,6 +528,9 @@ def get_products(
         }
 
     result = [serialize_product(p, is_wishlisted=(p.id in wishlisted_ids)) for p in products]
+
+    if deals_only:
+        result.sort(key=lambda x: (x["discount_percentage"], x["savings"], x["id"]), reverse=True)
 
     db.close()
     return result
@@ -590,6 +608,7 @@ async def create_product(
         new_product = Product(
             title=title.strip(),
             price=price,
+            highest_price=price,
             type=type.strip(),
             location=location.strip(),
             listed=datetime.now().strftime("%d %b %Y, %I:%M %p"),
@@ -710,6 +729,11 @@ async def update_product(
         if price is not None:
             if price < 0:
                 raise HTTPException(status_code=400, detail="Price cannot be negative.")
+            old_price = int(product.price or 0)
+            existing_highest = int(getattr(product, "highest_price", None) or old_price)
+            if existing_highest < old_price:
+                existing_highest = old_price
+            product.highest_price = max(existing_highest, old_price, price)
             product.price = price
         if type is not None and type.strip():
             product.type = type.strip()
@@ -1018,7 +1042,22 @@ def register_user(user: UserRegister):
             detail="Email is already registered",
         )
 
-    username_val = getattr(user, "username", None) or user.email.split("@")[0]
+    username_val = (getattr(user, "username", None) or "").strip()
+    if not username_val:
+        username_val = user.email.split("@")[0]
+
+    existing_username = db.query(User).filter(
+        User.username.isnot(None),
+        func.lower(User.username) == username_val.lower()
+    ).first()
+
+    if existing_username:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Username is already taken. Please choose another one.",
+        )
+
     new_user = User(
         email=user.email,
         username=username_val,

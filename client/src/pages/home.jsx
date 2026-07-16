@@ -183,17 +183,15 @@ function Home() {
                       brands: [],
                     }))
                   }
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-extrabold shrink-0 transition-all duration-200 cursor-pointer border ${
-                    isSelected
-                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/25 scale-[1.02]"
-                      : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200/80 hover:border-indigo-200 shadow-2xs"
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-extrabold shrink-0 transition-all duration-200 cursor-pointer border ${isSelected
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/25 scale-[1.02]"
+                    : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200/80 hover:border-indigo-200 shadow-2xs"
+                    }`}
                 >
                   <Icon
                     size={16}
-                    className={`shrink-0 ${
-                      isSelected ? "text-white" : "text-indigo-600"
-                    }`}
+                    className={`shrink-0 ${isSelected ? "text-white" : "text-indigo-600"
+                      }`}
                   />
                   <span>{item.name}</span>
                 </button>
@@ -387,14 +385,14 @@ function Home() {
 
           {/* Loader or Empty State or Products Grid */}
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-24 bg-white rounded-3xl border border-slate-200/50">
+            <div className="flex flex-col items-center justify-center min-h-[calc(100vh-240px)] bg-white rounded-3xl border border-slate-200/50 shadow-xs transition-all duration-300">
               <Loader height={50} width={6} />
-              <p className="text-slate-400 text-sm mt-3 font-medium">
+              <p className="text-slate-400 text-sm mt-3 font-medium animate-pulse">
                 {isSearching ? "Searching listings..." : "Applying filters..."}
               </p>
             </div>
           ) : products.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-200/50 px-6 text-center shadow-xs">
+            <div className="flex flex-col items-center justify-center min-h-[calc(100vh-240px)] py-20 bg-white rounded-3xl border border-slate-200/50 px-6 text-center shadow-xs transition-all duration-300">
               <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 mb-5 shadow-sm">
                 <Search size={28} />
               </div>

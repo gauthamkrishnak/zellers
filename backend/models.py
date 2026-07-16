@@ -9,6 +9,7 @@ class Product(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String)
     price = Column(Integer)
+    highest_price = Column(Integer, nullable=True)
     type = Column(String)
     location = Column(String)
     listed = Column(String)
@@ -31,7 +32,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
-    username = Column(String, nullable=True)
+    username = Column(String, unique=True, index=True, nullable=True)
     hashed_password = Column(String, nullable=False)
 
 

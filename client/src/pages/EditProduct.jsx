@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   Save,
   ShieldAlert,
+  TrendingDown,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { CATEGORIES, CONDITIONS } from "../components/SellItemModal";
@@ -34,6 +35,14 @@ export default function EditProduct() {
     location: "",
     condition: "Excellent",
     desc: "",
+  });
+
+  const [productMeta, setProductMeta] = useState({
+    highest_price: 0,
+    current_price: 0,
+    is_price_drop: false,
+    savings: 0,
+    discount_percentage: 0,
   });
 
   const handleCategoryChange = (e) => {
@@ -101,6 +110,13 @@ export default function EditProduct() {
         location: prod.location || "",
         condition: prod.condition || "Excellent",
         desc: prod.desc || "",
+      });
+      setProductMeta({
+        highest_price: prod.highest_price || prod.price || 0,
+        current_price: prod.current_price || prod.price || 0,
+        is_price_drop: prod.is_price_drop || false,
+        savings: prod.savings || 0,
+        discount_percentage: prod.discount_percentage || 0,
       });
       setExistingImage(prod.image || "");
     } catch (err) {
@@ -290,20 +306,43 @@ export default function EditProduct() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                Price (₹) <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="number"
-                name="price"
-                value={form.price}
-                onChange={handleChange}
-                disabled={isSold || saving}
-                required
-                min="0"
-                placeholder="e.g. 35000"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-sm font-medium text-slate-800 placeholder-slate-400 outline-none transition disabled:bg-slate-50"
-              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Current Price (₹) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="price"
+                    value={form.price}
+                    onChange={handleChange}
+                    disabled={isSold || saving}
+                    required
+                    min="0"
+                    placeholder="e.g. 35000"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-sm font-medium text-slate-800 placeholder-slate-400 outline-none transition disabled:bg-slate-50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center justify-between">
+                    <span>Highest Price (Read Only)</span>
+                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-semibold">Auto-Tracked</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={productMeta.highest_price || form.price || ""}
+                    disabled
+                    readOnly
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-100/80 text-slate-500 text-sm font-bold outline-none cursor-not-allowed"
+                  />
+                </div>
+              </div>
+              {productMeta.is_price_drop && (
+                <div className="mt-2.5 bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2 text-emerald-800 text-xs font-bold">
+                  <TrendingDown size={16} className="text-emerald-600 shrink-0" />
+                  <span>This product is currently an Attractive Deal ({productMeta.discount_percentage}% OFF • Save ₹{Number(productMeta.savings).toLocaleString("en-IN")})</span>
+                </div>
+              )}
             </div>
 
             <div>
