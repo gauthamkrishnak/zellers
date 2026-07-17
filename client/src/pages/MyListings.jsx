@@ -18,6 +18,10 @@ import {
   Clock,
   Loader2,
   TrendingDown,
+  Sparkles,
+  Zap,
+  Trophy,
+  Eye,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import SellItemModal from "../components/SellItemModal";
@@ -36,6 +40,7 @@ export default function MyListings() {
   const [deleting, setDeleting] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
   const [boostingItem, setBoostingItem] = useState(null);
+  const [boostConfirmModalItem, setBoostConfirmModalItem] = useState(null);
   const [historyModalItem, setHistoryModalItem] = useState(null);
   const [boostHistory, setBoostHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -409,9 +414,9 @@ export default function MyListings() {
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
                       {!isSold && !item.is_active_boost && (
                         <button
-                          onClick={() => handleBoostListing(item)}
+                          onClick={() => setBoostConfirmModalItem(item)}
                           disabled={boostingItem === item.id}
-                          title="Boost listing visibility for ₹199"
+                          title="Boost listing visibility for ₹199 (30 Days / 1 Month)"
                           className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 shadow-md shadow-amber-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-70"
                         >
                           {boostingItem === item.id ? (
@@ -534,6 +539,196 @@ export default function MyListings() {
           setTimeout(() => setSuccessMessage(""), 4000);
         }}
       />
+
+      {/* Boost Confirmation & Details Modal */}
+      {boostConfirmModalItem && (
+        <div className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col justify-between max-h-[90vh]">
+            {/* Header banner */}
+            <div className="relative bg-gradient-to-br from-amber-500 via-amber-600 to-yellow-500 p-6 text-slate-950 overflow-hidden shrink-0">
+              <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/20 rounded-full blur-2xl pointer-events-none" />
+              <div className="flex items-center justify-between relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-950/15 backdrop-blur-md flex items-center justify-center text-slate-950 shadow-inner">
+                    <Megaphone size={24} className="animate-bounce" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest bg-slate-950 text-amber-400 px-2.5 py-0.5 rounded-full shadow-xs">
+                      Sponsored Plan
+                    </span>
+                    <h3 className="text-xl font-black text-slate-950 mt-1 leading-tight">
+                      Boost Listing Visibility
+                    </h3>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setBoostConfirmModalItem(null)}
+                  className="w-8 h-8 rounded-full bg-slate-950/10 hover:bg-slate-950/20 text-slate-950 flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-5 overflow-y-auto">
+              {/* Target Item summary */}
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 flex items-center gap-3.5">
+                {boostConfirmModalItem.image_url ? (
+                  <img
+                    src={boostConfirmModalItem.image_url}
+                    alt={boostConfirmModalItem.title}
+                    className="w-14 h-14 rounded-xl object-cover shrink-0 border border-slate-200"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
+                    <Package size={20} />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-bold text-slate-800 text-sm truncate">
+                    {boostConfirmModalItem.title}
+                  </h4>
+                  <p className="text-xs font-black text-emerald-600 mt-0.5">
+                    ₹{Number(boostConfirmModalItem.price).toLocaleString("en-IN")}
+                  </p>
+                  <span className="text-[11px] text-slate-500 block truncate">
+                    {boostConfirmModalItem.location || "Local Listing"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Price & Duration Highlight Box */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 text-center">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-700 block">
+                    Total Price
+                  </span>
+                  <span className="text-2xl font-black text-slate-900 mt-1 block">
+                    ₹199
+                  </span>
+                  <span className="text-[10px] font-semibold text-slate-500">
+                    One-time payment
+                  </span>
+                </div>
+                <div className="bg-indigo-50/80 border border-indigo-200 rounded-2xl p-4 text-center">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-700 block">
+                    Duration
+                  </span>
+                  <span className="text-2xl font-black text-slate-900 mt-1 block">
+                    30 Days
+                  </span>
+                  <span className="text-[10px] font-semibold text-slate-500">
+                    1 Full Month
+                  </span>
+                </div>
+              </div>
+
+              {/* Benefits breakdown */}
+              <div className="space-y-3 pt-1 border-t border-slate-100">
+                <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                  What You Get:
+                </h5>
+                <div className="space-y-2.5">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <Trophy size={14} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">
+                        #1 Top Priority Placement
+                      </p>
+                      <p className="text-[11px] text-slate-500 leading-normal">
+                        Appears first on homepage recommendations, category feeds, and relevant search results.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <Sparkles size={14} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">
+                        Gold Sponsored Badge
+                      </p>
+                      <p className="text-[11px] text-slate-500 leading-normal">
+                        Highlighted with a distinct verified Sponsored label that builds trust and captures attention.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <Eye size={14} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">
+                        Up to 5x More Buyer Inquiries
+                      </p>
+                      <p className="text-[11px] text-slate-500 leading-normal">
+                        Boosted items receive 500% more views, helping your item sell significantly faster.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <Clock size={14} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">
+                        Guaranteed 30-Day Coverage
+                      </p>
+                      <p className="text-[11px] text-slate-500 leading-normal">
+                        Remains active 24/7 for a whole month until{" "}
+                        <span className="font-semibold text-slate-700">
+                          {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </span>. No recurring charges.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer buttons */}
+            <div className="p-5 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
+              <button
+                onClick={() => setBoostConfirmModalItem(null)}
+                className="px-5 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-xs transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const target = boostConfirmModalItem;
+                  setBoostConfirmModalItem(null);
+                  handleBoostListing(target);
+                }}
+                disabled={boostingItem === boostConfirmModalItem.id}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/25 transition-all cursor-pointer disabled:opacity-70 active:scale-95"
+              >
+                {boostingItem === boostConfirmModalItem.id ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    <span>Opening Payment...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap size={15} className="fill-slate-950" />
+                    <span>Proceed & Pay ₹199</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Boost History Modal */}
       {historyModalItem && (
