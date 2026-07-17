@@ -9,6 +9,12 @@ import {
   Settings,
   Package,
   ShoppingBag,
+  Sparkles,
+  Zap,
+  Tag,
+  Gift,
+  Flame,
+  CheckCircle2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useWishlist } from "../context/WishlistContext";
@@ -18,6 +24,75 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import SellItemModal from "./SellItemModal";
 
+const initialNotificationsData = [
+  {
+    id: 1,
+    title: "Onam Deals are coming!",
+    category: "Special Offer",
+    desc: "Get ready for the biggest festive sales. Up to 50% off on electronics, clothing, and home appliances. Stay tuned!",
+    time: "Just now",
+    badge: "Up to 50% OFF",
+    theme: "indigo",
+    icon: Sparkles,
+    unread: true,
+  },
+  {
+    id: 2,
+    title: "Midnight Tech & Gaming Drop! ⚡",
+    category: "Flash Deal",
+    desc: "Exclusive 30% price slash on top-rated gaming laptops, PS5 consoles, and wireless peripherals starting this Friday at midnight.",
+    time: "2 hours ago",
+    badge: "30% OFF",
+    theme: "rose",
+    icon: Zap,
+    unread: true,
+  },
+  {
+    id: 3,
+    title: "Mega Mobile & Gadget Fest 📱",
+    category: "Upcoming Sale",
+    desc: "Early bird access unlocks tomorrow! Grab extra ₹3,000 exchange bonus on iPhones, Samsung S-series, and OnePlus smartphones.",
+    time: "5 hours ago",
+    badge: "₹3,000 Bonus",
+    theme: "amber",
+    icon: Flame,
+    unread: true,
+  },
+  {
+    id: 4,
+    title: "Refresh Your Living Space 🛋️",
+    category: "Season Offer",
+    desc: "Flat 40% off on ergonomic office chairs, wooden dining tables, and luxury sofa sets. Free doorstep delivery on orders above ₹10,000!",
+    time: "1 day ago",
+    badge: "Flat 40% OFF",
+    theme: "emerald",
+    icon: Tag,
+    unread: true,
+  },
+  {
+    id: 5,
+    title: "Zero Commission Weekend! 🎁",
+    category: "Seller Reward",
+    desc: "List any item this weekend and keep 100% of your earnings. No marketplace fees across all categories!",
+    time: "2 days ago",
+    badge: "0% Fee",
+    theme: "violet",
+    icon: Gift,
+    unread: false,
+  },
+  {
+    id: 6,
+    title: "Your ₹500 Voucher is Waiting! 🎟️",
+    category: "Personal Offer",
+    desc: "Use code ZELLERS500 on your next purchase over ₹2,500 to get an instant ₹500 flat discount at checkout.",
+    time: "3 days ago",
+    badge: "ZELLERS500",
+    theme: "cyan",
+    icon: Tag,
+    unread: false,
+  },
+];
+
 function Navbar({ searchTerm, setSearchTerm }) {
   const navigate = useNavigate();
   const { wishlistCount } = useWishlist();
@@ -26,6 +101,19 @@ function Navbar({ searchTerm, setSearchTerm }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
+  const [notifications, setNotifications] = useState(initialNotificationsData);
+
+  const unreadCount = notifications.filter((n) => n.unread).length;
+
+  const markAllAsRead = () => {
+    setNotifications(notifications.map((n) => ({ ...n, unread: false })));
+  };
+
+  const markAsRead = (id) => {
+    setNotifications(
+      notifications.map((n) => (n.id === id ? { ...n, unread: false } : n))
+    );
+  };
 
   const displayName = user?.username || user?.email?.split("@")[0] || "User";
   const displayEmail = user?.email || "";
@@ -191,9 +279,14 @@ function Navbar({ searchTerm, setSearchTerm }) {
 
                 <button
                   onClick={() => setIsNotificationsOpen(true)}
-                  className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-all duration-200 cursor-pointer"
+                  className="relative p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-all duration-200 cursor-pointer"
                 >
                   <Bell size={20} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-md">
+                      {unreadCount}
+                    </span>
+                  )}
                 </button>
 
                 <div className="relative" ref={profileRefMobile}>
@@ -305,6 +398,11 @@ function Navbar({ searchTerm, setSearchTerm }) {
                 className="relative p-2.5 text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition-all duration-200 cursor-pointer group"
               >
                 <Bell size={22} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-md">
+                    {unreadCount}
+                  </span>
+                )}
                 <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition duration-200 whitespace-nowrap shadow-md pointer-events-none">
                   Notifications
                 </span>
@@ -333,36 +431,161 @@ function Navbar({ searchTerm, setSearchTerm }) {
         onClick={() => setIsNotificationsOpen(false)}
       />
       <div
-        className={`fixed top-0 right-0 h-full w-full sm:w-80 bg-white shadow-2xl z-[70] transform transition-transform duration-300 flex flex-col ${isNotificationsOpen ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-2xl z-[70] transform transition-transform duration-300 flex flex-col ${isNotificationsOpen ? "translate-x-0" : "translate-x-full"}`}
       >
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
-          <h2 className="text-lg font-bold text-slate-800">Notifications</h2>
-          <button
-            onClick={() => setIsNotificationsOpen(false)}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
-          >
-            <X size={20} />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl flex flex-col gap-2 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl -mr-10 -mt-10" />
-
-            <div className="flex items-center gap-2 text-indigo-600">
-              <Bell size={16} className="fill-indigo-600" />
-              <span className="text-xs font-bold uppercase tracking-wider">
-                Special Offer
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-lg font-bold text-slate-800">Notifications</h2>
+            {unreadCount > 0 && (
+              <span className="bg-rose-100 text-rose-700 text-xs px-2.5 py-0.5 rounded-full font-bold">
+                {unreadCount} New
               </span>
-            </div>
-            <h3 className="text-sm font-bold text-slate-800 relative z-10">
-              Onam Deals are coming!
-            </h3>
-            <p className="text-xs text-slate-600 relative z-10">
-              Get ready for the biggest festive sales. Up to 50% off on
-              electronics, clothing, and home appliances. Stay tuned!
-            </p>
-            <span className="text-[10px] text-slate-400 mt-1">Just now</span>
+            )}
           </div>
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllAsRead}
+                title="Mark all as read"
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100/80 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+              >
+                <CheckCircle2 size={14} />
+                <span>Mark read</span>
+              </button>
+            )}
+            <button
+              onClick={() => setIsNotificationsOpen(false)}
+              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-3.5 divide-y divide-transparent">
+          {notifications.map((notif) => {
+            const IconComponent = notif.icon;
+            const themeStyles = {
+              indigo: {
+                bg: notif.unread
+                  ? "bg-indigo-50/90 border-indigo-200"
+                  : "bg-white border-slate-100",
+                iconBg: "bg-indigo-100 text-indigo-600",
+                badgeBg: "bg-indigo-600 text-white",
+                categoryText: "text-indigo-600",
+                glow: "bg-indigo-500/10",
+              },
+              rose: {
+                bg: notif.unread
+                  ? "bg-rose-50/90 border-rose-200"
+                  : "bg-white border-slate-100",
+                iconBg: "bg-rose-100 text-rose-600",
+                badgeBg: "bg-rose-600 text-white",
+                categoryText: "text-rose-600",
+                glow: "bg-rose-500/10",
+              },
+              amber: {
+                bg: notif.unread
+                  ? "bg-amber-50/90 border-amber-200"
+                  : "bg-white border-slate-100",
+                iconBg: "bg-amber-100 text-amber-600",
+                badgeBg: "bg-amber-600 text-white",
+                categoryText: "text-amber-600",
+                glow: "bg-amber-500/10",
+              },
+              emerald: {
+                bg: notif.unread
+                  ? "bg-emerald-50/90 border-emerald-200"
+                  : "bg-white border-slate-100",
+                iconBg: "bg-emerald-100 text-emerald-600",
+                badgeBg: "bg-emerald-600 text-white",
+                categoryText: "text-emerald-600",
+                glow: "bg-emerald-500/10",
+              },
+              violet: {
+                bg: notif.unread
+                  ? "bg-violet-50/90 border-violet-200"
+                  : "bg-white border-slate-100",
+                iconBg: "bg-violet-100 text-violet-600",
+                badgeBg: "bg-violet-600 text-white",
+                categoryText: "text-violet-600",
+                glow: "bg-violet-500/10",
+              },
+              cyan: {
+                bg: notif.unread
+                  ? "bg-cyan-50/90 border-cyan-200"
+                  : "bg-white border-slate-100",
+                iconBg: "bg-cyan-100 text-cyan-600",
+                badgeBg: "bg-cyan-600 text-white",
+                categoryText: "text-cyan-600",
+                glow: "bg-cyan-500/10",
+              },
+            }[notif.theme || "indigo"];
+
+            return (
+              <div
+                key={notif.id}
+                onClick={() => markAsRead(notif.id)}
+                className={`p-4 rounded-2xl border transition-all duration-200 relative overflow-hidden group cursor-pointer hover:shadow-md ${themeStyles.bg}`}
+              >
+                <div
+                  className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none ${themeStyles.glow}`}
+                />
+
+                <div className="flex items-start gap-3.5 relative z-10">
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${themeStyles.iconBg}`}
+                  >
+                    <IconComponent size={20} />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span
+                        className={`text-[11px] font-extrabold uppercase tracking-wider ${themeStyles.categoryText}`}
+                      >
+                        {notif.category}
+                      </span>
+                      {notif.badge && (
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold shadow-sm ${themeStyles.badgeBg}`}
+                        >
+                          {notif.badge}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-slate-800 leading-snug">
+                        {notif.title}
+                      </h3>
+                      {notif.unread && (
+                        <span
+                          className="w-2 h-2 rounded-full bg-rose-500 shrink-0 animate-pulse"
+                          title="Unread"
+                        />
+                      )}
+                    </div>
+
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                      {notif.desc}
+                    </p>
+
+                    <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-200/50 text-[11px] text-slate-400 font-medium">
+                      <span>{notif.time}</span>
+                      {notif.unread ? (
+                        <span className="text-indigo-600 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                          Click to mark read
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 opacity-60">Read</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
