@@ -22,6 +22,7 @@ import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import Loader from "../components/Loader";
 import SellerInfo from "../components/SellerInfo";
+import { CONDITIONS } from "../components/SellItemModal";
 
 function ProductDetails() {
   const { id } = useParams();
@@ -129,7 +130,29 @@ function ProductDetails() {
   const isWishlisted = product.is_wishlisted;
 
   const isSold = Boolean(product?.is_sold || product?.status === "sold");
-  const isBrandNew = product.condition === "Brand New";
+  const conditionStr = product.condition || "Excellent";
+  const condObj = CONDITIONS.find(
+    (c) => c.id.toLowerCase() === conditionStr.toLowerCase()
+  ) || CONDITIONS[2]; // fallback to Excellent
+
+  const getConditionStyle = (cond) => {
+    switch (cond) {
+      case "Brand New":
+        return "bg-blue-50 text-blue-700 border-blue-200/80";
+      case "Like New":
+        return "bg-indigo-50 text-indigo-700 border-indigo-200/80";
+      case "Excellent":
+        return "bg-emerald-50 text-emerald-700 border-emerald-200/80";
+      case "Good":
+        return "bg-amber-50 text-amber-800 border-amber-200/80";
+      case "Fair":
+        return "bg-orange-50 text-orange-800 border-orange-200/80";
+      case "For Parts / Repair":
+        return "bg-rose-50 text-rose-700 border-rose-200/80";
+      default:
+        return "bg-slate-50 text-slate-700 border-slate-200/80";
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fadeIn">
@@ -163,18 +186,18 @@ function ProductDetails() {
                 : "bg-white border border-slate-200/50"
             }`}
           >
-            {/* Top-Left Badges (Sponsored & Brand New) */}
+            {/* Top-Left Badges (Sponsored & Condition) */}
             <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 items-start">
               {!isSold && product.is_active_boost && (
-                <span className="bg-amber-50 text-amber-800 border border-amber-200/80 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                <span className="bg-amber-50 text-amber-800 border border-amber-200/80 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-xs">
                   <Megaphone size={13} className="text-amber-600 shrink-0" />
                   <span>Sponsored</span>
                 </span>
               )}
-              {!isSold && isBrandNew && (
-                <span className="bg-blue-50 text-blue-700 border border-blue-200/80 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5">
-                  <ShieldCheck size={13} className="text-blue-600 shrink-0" />
-                  <span>Brand New</span>
+              {!isSold && (
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 border shadow-xs backdrop-blur-xs ${getConditionStyle(conditionStr)}`}>
+                  <span className="scale-75 shrink-0 flex items-center">{condObj?.icon || <ShieldCheck size={16} />}</span>
+                  <span>{conditionStr}</span>
                 </span>
               )}
             </div>
@@ -196,13 +219,35 @@ function ProductDetails() {
             />
           </div>
 
-          <div className="bg-white rounded-3xl border border-slate-200/50 p-6 md:p-8 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-800 mb-4">
-              Description
-            </h2>
-            <p className="text-slate-600 leading-relaxed text-sm md:text-base whitespace-pre-line">
-              {product.desc}
-            </p>
+          <div className="bg-white rounded-3xl border border-slate-200/50 p-6 md:p-8 shadow-sm flex flex-col gap-6">
+            {/* Product Condition Card */}
+            <div className={`p-4 rounded-2xl border flex items-start gap-3.5 ${getConditionStyle(conditionStr)}`}>
+              <div className="p-2 bg-white/90 rounded-xl shadow-2xs shrink-0 flex items-center justify-center">
+                {condObj?.icon || <ShieldCheck size={20} />}
+              </div>
+              <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <h4 className="text-sm font-black tracking-tight">
+                    Condition: {conditionStr}
+                  </h4>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/80 border border-current/20 shadow-2xs">
+                    Verified Condition
+                  </span>
+                </div>
+                <p className="text-xs leading-relaxed opacity-90 font-medium">
+                  {condObj?.desc || "Maintained and inspected by the seller."}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-lg font-bold text-slate-800 mb-4">
+                Description
+              </h2>
+              <p className="text-slate-600 leading-relaxed text-sm md:text-base whitespace-pre-line">
+                {product.desc}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -273,18 +318,22 @@ function ProductDetails() {
               </span>
             )}
 
-            <div className="flex flex-col gap-2 border-t border-b border-slate-100 py-4 text-sm text-slate-500 font-medium">
+            <div className="flex flex-col gap-3 border-t border-b border-slate-100 py-4 text-sm text-slate-500 font-medium">
               <div className="flex items-center gap-2">
-                <MapPin size={16} className="text-slate-400" />
+                <MapPin size={16} className="text-slate-400 shrink-0" />
                 <span>{product.location}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Calendar size={16} className="text-slate-400" />
+                <Calendar size={16} className="text-slate-400 shrink-0" />
                 <span>Listed on {product.listed ? product.listed.replace(/^on\s+/i, "") : ""}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 shrink-0 flex items-center scale-85">{condObj?.icon || <ShieldCheck size={16} />}</span>
+                <span>Condition: <strong className="text-slate-700">{conditionStr}</strong></span>
               </div>
               {product.brand && (
                 <div className="flex items-center gap-2">
-                  <Tag size={16} className="text-slate-400" />
+                  <Tag size={16} className="text-slate-400 shrink-0" />
                   <span>Brand: <strong className="text-slate-700">{product.brand}</strong></span>
                 </div>
               )}
