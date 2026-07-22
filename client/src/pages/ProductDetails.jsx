@@ -45,6 +45,7 @@ function ProductDetails() {
         );
 
         setProduct(response.data);
+        document.title = `${response.data.title} | Zellers`;
 
         if (response.data.seller_id) {
           try {

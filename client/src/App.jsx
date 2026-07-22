@@ -1,4 +1,5 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 
 import Home from "./pages/home";
 import ProductDetails from "./pages/ProductDetails";
@@ -17,6 +18,35 @@ import MyPurchases from "./pages/MyPurchases";
 import PurchaseDetails from "./pages/PurchaseDetails";
 
 function App() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const path = location.pathname;
+    let title = "Zellers";
+
+    if (path === "/") {
+      title = "Zellers | Premier Local Marketplace";
+    } else if (path === "/login") {
+      title = "Login | Zellers";
+    } else if (path === "/account") {
+      title = "My Account | Zellers";
+    } else if (path === "/wishlist") {
+      title = "Wishlist | Zellers";
+    } else if (path === "/cart") {
+      title = "Cart | Zellers";
+    } else if (path === "/my-listings") {
+      title = "My Listings | Zellers";
+    } else if (path === "/my-purchases") {
+      title = "My Purchases | Zellers";
+    } else if (path === "/checkout/payment") {
+      title = "Checkout | Zellers";
+    } else if (path === "/order-success") {
+      title = "Order Successful | Zellers";
+    }
+
+    document.title = title;
+  }, [location]);
+
   return (
     <>
       <ScrollToTop />
