@@ -245,3 +245,110 @@ class SellerReviewsAggregateResponse(BaseModel):
     rating_sum: int
     distribution: Dict[str, int]
     recent_reviews: List[SellerReviewResponse]
+
+
+# ---------------------------------------------------------------------------
+# Chat & Notification Schemas
+# ---------------------------------------------------------------------------
+
+class ConversationCreate(BaseModel):
+    """Payload to initiate a new conversation (buyer -> seller about a product)."""
+    product_id: int
+    initial_message: str
+
+
+class MessageCreate(BaseModel):
+    """Payload to send a message inside an existing conversation."""
+    conversation_id: int
+    content: str
+
+
+class MessageResponse(BaseModel):
+    id: int
+    conversation_id: int
+    sender_id: int
+    sender_name: Optional[str] = None
+    content: str
+    created_at: Optional[datetime] = None
+    is_read: bool
+
+    class Config:
+        from_attributes = True
+
+
+class ConversationDetailResponse(BaseModel):
+    """Full conversation detail including lazily-loaded messages."""
+    id: int
+    conversation_type: str
+    buyer_id: int
+    buyer_name: Optional[str] = None
+    seller_id: int
+    seller_name: Optional[str] = None
+    product_id: Optional[int] = None
+    status: str
+    created_at: Optional[datetime] = None
+    accepted_at: Optional[datetime] = None
+    rejected_at: Optional[datetime] = None
+    # Immutable product snapshot
+    product_title: Optional[str] = None
+    product_thumbnail: Optional[str] = None
+    product_price: Optional[int] = None
+    # Unread counts (relative to the requesting user — resolved in route)
+    my_unread_count: Optional[int] = 0
+    messages: Optional[List[MessageResponse]] = []
+
+    class Config:
+        from_attributes = True
+
+
+class ConversationListItem(BaseModel):
+    """Lightweight conversation preview for the inbox list."""
+    id: int
+    conversation_type: str
+    other_party_id: int
+    other_party_name: Optional[str] = None
+    product_id: Optional[int] = None
+    status: str
+    created_at: Optional[datetime] = None
+    # Immutable product snapshot
+    product_title: Optional[str] = None
+    product_thumbnail: Optional[str] = None
+    product_price: Optional[int] = None
+    # Denormalized preview
+    last_message: Optional[str] = None
+    last_message_time: Optional[datetime] = None
+    my_unread_count: int = 0
+
+    class Config:
+        from_attributes = True
+
+
+class PaginatedConversations(BaseModel):
+    items: List[ConversationListItem]
+    total: int
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class NotificationResponse(BaseModel):
+    id: int
+    user_id: int
+    type: str
+    title: str
+    body: str
+    reference_id: Optional[int] = None
+    is_read: bool
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PaginatedNotifications(BaseModel):
+    items: List[NotificationResponse]
+    total: int
+    unread_count: int
+    page: int
+    page_size: int
+    has_next: bool

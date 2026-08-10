@@ -1,6 +1,7 @@
 import os
 import uuid
 import json
+import asyncio
 from datetime import datetime, timezone, timedelta
 import razorpay
 from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Form, status, Body, Query
@@ -8,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text, or_, and_, func, case
 from sqlalchemy.orm import joinedload
 from database import engine, SessionLocal
-from models import Base, Product, User, Wishlist, Cart, Order, OrderItem, Payment, ProductBoost, SellerReview
+from models import Base, Product, User, Wishlist, Cart, Order, OrderItem, Payment, ProductBoost, SellerReview, Conversation, Message, Notification, ConversationStatus, ConversationType, NotificationType
 from schemas import (
     UserRegister, UserLogin, PaymentVerifyRequest, PaymentFailureRequest,
     ProductCreate, ProductUpdate, ProductResponse, PaymentResponse,
@@ -23,6 +24,8 @@ from products import products as seed_products
 from auth import hash_password, verify_password, create_access_token
 from jose import jwt, JWTError
 from auth import SECRET_KEY, ALGORITHM
+from chat import router as chat_router
+from tasks import periodic_expire_task
 from fastapi.staticfiles import StaticFiles
 from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
@@ -35,6 +38,10 @@ print("KEY ID:", RAZORPAY_KEY_ID)
 print("SECRET:", "Loaded" if RAZORPAY_KEY_SECRET else "Not Loaded")
 
 app = FastAPI()
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(periodic_expire_task())
 
 # Allow React frontend to call this backend
 app.add_middleware(
@@ -50,6 +57,9 @@ app.add_middleware(
 
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+# Register routers
+app.include_router(chat_router)
 
 # Create tables if they do not already exist
 Base.metadata.create_all(bind=engine)

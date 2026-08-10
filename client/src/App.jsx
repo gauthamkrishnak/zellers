@@ -16,6 +16,9 @@ import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MyPurchases from "./pages/MyPurchases";
 import PurchaseDetails from "./pages/PurchaseDetails";
+import ChatList from "./pages/Chat/ChatList";
+import ChatWindow from "./pages/Chat/ChatWindow";
+
 
 function App() {
   const location = useLocation();
@@ -75,6 +78,8 @@ function App() {
             <Route path="/edit-product/:id" element={<EditProduct />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/order-success" element={<OrderSuccess />} />
+            <Route path="/chat" element={<ChatList />} />
+            <Route path="/chat/:conversationId" element={<ChatWindow />} />
           </Route>
         </Route>
       </Routes>

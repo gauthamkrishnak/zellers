@@ -12,9 +12,10 @@ import {
   Sparkles,
   Zap,
   Tag,
-  Gift,
   Flame,
   CheckCircle2,
+  MessageCircle,
+  Gift,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useWishlist } from "../context/WishlistContext";
@@ -160,6 +161,17 @@ function Navbar({ searchTerm, setSearchTerm }) {
         >
           <ShoppingBag size={17} />
           <span>My Purchases</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setIsProfileOpen(false);
+            navigate("/chat");
+          }}
+          className="w-full flex items-center gap-3 px-5 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors cursor-pointer"
+        >
+          <MessageCircle size={17} />
+          <span>Messages</span>
         </button>
 
         <button

@@ -16,7 +16,10 @@ import {
   AlertCircle,
   TrendingDown,
   Star,
+  MessageCircle,
 } from "lucide-react";
+import { useDispatch } from "react-redux";
+import { startConversation } from "../features/chat/chatSlice";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
@@ -30,11 +33,13 @@ function ProductDetails() {
   const location = useLocation();
   const { refreshWishlist } = useWishlist();
   const { cartItems, addToCart, setIsCartOpen } = useCart();
-  const { getAuthHeaders, isAuthenticated } = useAuth();
+  const { getAuthHeaders, isAuthenticated, user } = useAuth();
+  const dispatch = useDispatch();
 
   const [product, setProduct] = useState(null);
   const [recentReviews, setRecentReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isStartingChat, setIsStartingChat] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -101,6 +106,29 @@ function ProductDetails() {
     navigate(`/checkout/payment?mode=buynow&product_id=${product.id}`, {
       state: { buyNowProduct: product, buyNowMode: true },
     });
+  };
+
+  const handleChatClick = async () => {
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+    try {
+      setIsStartingChat(true);
+      const action = await dispatch(
+        startConversation({
+          productId: product.id,
+          initialMessage: `Hi, I am interested in your ${product.title}`,
+        })
+      );
+      if (startConversation.fulfilled.match(action)) {
+        navigate(`/chat/${action.payload.id}`);
+      } else {
+        alert("Could not start chat. Please try again.");
+      }
+    } finally {
+      setIsStartingChat(false);
+    }
   };
 
   if (loading) {
@@ -401,6 +429,20 @@ function ProductDetails() {
                 />
               </button>
             </div>
+            
+            {/* Chat with Seller Button */}
+            {product && user && user.id !== product.seller_id && !isSold && (
+              <div className="mt-1">
+                <button
+                  onClick={handleChatClick}
+                  disabled={isStartingChat}
+                  className="w-full bg-white border-2 border-indigo-100 hover:border-indigo-600 hover:bg-indigo-50 text-indigo-700 font-bold py-3.5 px-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <MessageCircle size={18} />
+                  <span>{isStartingChat ? "Starting Chat..." : "Chat with Seller"}</span>
+                </button>
+              </div>
+            )}
           </div>
 
           <SellerInfo product={product} />

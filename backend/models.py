@@ -1,7 +1,39 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, UniqueConstraint, DateTime, Float
+import enum
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, UniqueConstraint, DateTime, Float, Enum, Index
 from sqlalchemy.orm import relationship
 from database import Base
+
+
+# ---------------------------------------------------------------------------
+# Enums
+# ---------------------------------------------------------------------------
+
+class ConversationStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    ACTIVE = "ACTIVE"
+    REJECTED = "REJECTED"
+    CLOSED = "CLOSED"
+    BLOCKED = "BLOCKED"
+    EXPIRED = "EXPIRED"
+
+
+class ConversationType(str, enum.Enum):
+    PRODUCT = "PRODUCT"
+    SUPPORT = "SUPPORT"
+    SYSTEM = "SYSTEM"
+    GENERAL = "GENERAL"
+
+
+class NotificationType(str, enum.Enum):
+    NEW_CHAT_REQUEST = "NEW_CHAT_REQUEST"
+    CHAT_ACCEPTED = "CHAT_ACCEPTED"
+    CHAT_REJECTED = "CHAT_REJECTED"
+    NEW_MESSAGE = "NEW_MESSAGE"
+    PRODUCT_SOLD = "PRODUCT_SOLD"
+    BOOST_PAYMENT_SUCCESS = "BOOST_PAYMENT_SUCCESS"
+    PAYMENT_FAILED = "PAYMENT_FAILED"
+    SYSTEM = "SYSTEM"
 
 class Product(Base):
     __tablename__ = "products"
@@ -163,5 +195,76 @@ class SellerReview(Base):
     order_item = relationship("OrderItem", foreign_keys=[order_item_id])
     seller = relationship("User", foreign_keys=[seller_id])
     buyer = relationship("User", foreign_keys=[buyer_id])
+
+
+# ─── Chat System ───────────────────────────────────────────────────────────────
+
+from sqlalchemy import Enum as SAEnum, Text
+
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id                  = Column(Integer, primary_key=True, index=True)
+    conversation_type   = Column(SAEnum(ConversationType), default=ConversationType.PRODUCT, nullable=False)
+    buyer_id            = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    seller_id           = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    product_id          = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True)
+    status              = Column(SAEnum(ConversationStatus), default=ConversationStatus.PENDING, nullable=False)
+    created_at          = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    accepted_at         = Column(DateTime(timezone=True), nullable=True)
+    rejected_at         = Column(DateTime(timezone=True), nullable=True)
+
+    # Immutable product snapshot
+    product_title       = Column(String, nullable=True)
+    product_thumbnail   = Column(String, nullable=True)
+    product_price       = Column(Integer, nullable=True)
+
+    # Denormalised preview fields (avoids N+1 on list views)
+    last_message        = Column(Text, nullable=True)
+    last_message_time   = Column(DateTime(timezone=True), nullable=True)
+    last_sender_id      = Column(Integer, nullable=True)
+    buyer_unread_count  = Column(Integer, default=0)
+    seller_unread_count = Column(Integer, default=0)
+
+    buyer    = relationship("User", foreign_keys=[buyer_id])
+    seller_u = relationship("User", foreign_keys=[seller_id])
+    product  = relationship("Product", foreign_keys=[product_id])
+    messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        UniqueConstraint("buyer_id", "seller_id", "product_id", name="uq_conv_buyer_seller_product"),
+    )
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id              = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, index=True)
+    sender_id       = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    content         = Column(Text, nullable=False)
+    is_read         = Column(Boolean, default=False)
+    created_at      = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    conversation = relationship("Conversation", back_populates="messages")
+    sender       = relationship("User", foreign_keys=[sender_id])
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id           = Column(Integer, primary_key=True, index=True)
+    user_id      = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    type         = Column(SAEnum(NotificationType), nullable=False)
+    title        = Column(String, nullable=False)
+    body         = Column(Text, nullable=True)
+    reference_id = Column(Integer, nullable=True)
+    is_read      = Column(Boolean, default=False)
+    created_at   = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", foreign_keys=[user_id])
+
+
 
 
