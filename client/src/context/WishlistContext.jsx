@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import axios from "axios";
 import { useAuth } from "./AuthContext";
+import { API_BASE_URL } from "../config";
 
 const WishlistContext = createContext(null);
 
@@ -15,7 +16,7 @@ export function WishlistProvider({ children }) {
       return;
     }
     try {
-      const response = await axios.get("http://127.0.0.1:8000/wishlist/", {
+      const response = await axios.get(`${API_BASE_URL}/wishlist/`, {
         headers,
       });
       setWishlistCount(response.data.length);

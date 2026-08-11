@@ -1,6 +1,7 @@
 import { X, Trash2, ShoppingBag, CreditCard, AlertCircle, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { getImageUrl } from "../config";
 
 function CartSidebar() {
   const navigate = useNavigate();
@@ -74,7 +75,7 @@ function CartSidebar() {
                 >
                   <div className="w-20 h-20 bg-slate-50 rounded-xl overflow-hidden flex items-center justify-center shrink-0 relative border border-slate-100">
                     <img
-                      src={`http://127.0.0.1:8000/uploads/${item.image}`}
+                      src={getImageUrl(item.image)}
                       alt={item.title}
                       className={`max-w-full max-h-full object-contain transition-all ${
                         isSold ? "grayscale opacity-70" : ""

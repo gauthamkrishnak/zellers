@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+import { API_BASE_URL, getImageUrl } from "../config";
 import {
   ShoppingBag,
   Calendar,
@@ -68,7 +69,7 @@ export default function MyPurchases() {
     try {
       if (reviewingExisting) {
         await axios.put(
-          `http://127.0.0.1:8000/reviews/${reviewingExisting.id}`,
+          `${API_BASE_URL}/reviews/${reviewingExisting.id}`,
           {
             rating: selectedRating,
             review_text: null,
@@ -77,7 +78,7 @@ export default function MyPurchases() {
         );
       } else {
         await axios.post(
-          "http://127.0.0.1:8000/reviews",
+          `${API_BASE_URL}/reviews`,
           {
             order_item_id: activeRateItem.order_item_id || activeRateItem.product_id,
             rating: selectedRating,
@@ -111,7 +112,7 @@ export default function MyPurchases() {
     setError(null);
     try {
       const response = await axios.get(
-        "http://127.0.0.1:8000/orders/my-purchases",
+        `${API_BASE_URL}/orders/my-purchases`,
         { headers: getAuthHeaders() }
       );
       setPurchases(response.data);
@@ -275,11 +276,7 @@ export default function MyPurchases() {
               {purchases.map((item, idx) => {
                 const imgName =
                   item.snapshot_primary_image || item.current_product_image;
-                const imgSrc = imgName
-                  ? imgName.startsWith("http")
-                    ? imgName
-                    : `http://127.0.0.1:8000/uploads/${imgName}`
-                  : null;
+                const imgSrc = imgName ? getImageUrl(imgName) : null;
 
                 const displayTitle =
                   item.snapshot_product_title || item.product_title;

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import axios from "axios";
 import { useAuth } from "./AuthContext";
 import { CreditCard, CheckCircle2, XCircle, ShieldCheck, X } from "lucide-react";
+import { API_BASE_URL } from "../config";
 
 const CartContext = createContext(null);
 
@@ -36,7 +37,7 @@ export function CartProvider({ children }) {
       return;
     }
     try {
-      const response = await axios.get("http://127.0.0.1:8000/cart/", {
+      const response = await axios.get(`${API_BASE_URL}/cart/`, {
         headers,
       });
       setCartItems(response.data);
@@ -62,7 +63,7 @@ export function CartProvider({ children }) {
     }
     try {
       await axios.post(
-        `http://127.0.0.1:8000/cart/${product.id}`,
+        `${API_BASE_URL}/cart/${product.id}`,
         {},
         { headers: activeHeaders },
       );
@@ -84,7 +85,7 @@ export function CartProvider({ children }) {
   const removeFromCart = async (productId) => {
     try {
       await axios.delete(
-        `http://127.0.0.1:8000/cart/${productId}`,
+        `${API_BASE_URL}/cart/${productId}`,
         { headers: getAuthHeaders() },
       );
       setCartItems((prevItems) => prevItems.filter((item) => item.id !== productId));
@@ -95,7 +96,7 @@ export function CartProvider({ children }) {
 
   const removeSoldItems = async () => {
     try {
-      await axios.delete("http://127.0.0.1:8000/cart/remove-sold", {
+      await axios.delete(`${API_BASE_URL}/cart/remove-sold`, {
         headers: getAuthHeaders(),
       });
       setCartItems((prevItems) =>
@@ -109,7 +110,7 @@ export function CartProvider({ children }) {
 
   const clearCart = async () => {
     try {
-      await axios.delete("http://127.0.0.1:8000/cart/", {
+      await axios.delete(`${API_BASE_URL}/cart/`, {
         headers: getAuthHeaders(),
       });
       setCartItems([]);
@@ -161,7 +162,7 @@ export function CartProvider({ children }) {
       try {
         setIsCheckingOut(true);
         const verifyRes = await axios.post(
-          "http://127.0.0.1:8000/checkout/verify",
+          `${API_BASE_URL}/checkout/verify`,
           {
             razorpay_order_id: data.razorpay_order_id,
             razorpay_payment_id: `pay_sim_${Date.now()}`,
@@ -188,7 +189,7 @@ export function CartProvider({ children }) {
     } else {
       try {
         await axios.post(
-          "http://127.0.0.1:8000/checkout/failure",
+          `${API_BASE_URL}/checkout/failure`,
           {
             razorpay_order_id: data.razorpay_order_id,
             error_description: "User simulated payment failure",

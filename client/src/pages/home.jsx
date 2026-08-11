@@ -17,6 +17,7 @@ import {
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { CATEGORY_ITEMS } from "../constants/brands";
+import { API_BASE_URL } from "../config";
 
 function Home() {
   const { searchTerm } = useOutletContext();
@@ -29,14 +30,13 @@ function Home() {
     conditions: [],
     minPrice: "",
     maxPrice: "",
-    availability: "available",
-    dealsOnly: false,
-    sort: "newest",
+    hasPriceDrop: false,
+    isSponsored: false,
   });
 
   const [products, setProducts] = useState([]);
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
   const [isSearching, setIsSearching] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const isFirstRender = useRef(true);
@@ -47,7 +47,7 @@ function Home() {
     setIsLoading(true);
 
     try {
-      const response = await axios.get("http://127.0.0.1:8000/products/", {
+      const response = await axios.get(`${API_BASE_URL}/products/`, {
         params: {
           category: filters.category !== "All" ? filters.category : undefined,
           search: debouncedSearch || undefined,

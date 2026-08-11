@@ -11,6 +11,7 @@ import {
 } from "../../features/chat/chatSlice";
 import { useAuth } from "../../context/AuthContext";
 import { Send, ArrowLeft, ShieldCheck, AlertCircle, Package } from "lucide-react";
+import { getWebSocketUrl, getImageUrl } from "../../config";
 
 const ChatWindow = () => {
   const { conversationId } = useParams();
@@ -33,10 +34,10 @@ const ChatWindow = () => {
 
   // WebSocket Connection
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("access_token");
     if (!token) return;
 
-    const socket = new WebSocket(`ws://127.0.0.1:8000/api/chat/ws?token=${token}`);
+    const socket = new WebSocket(getWebSocketUrl());
 
     socket.onopen = () => {
       console.log("Chat WS Connected");
@@ -118,7 +119,7 @@ const ChatWindow = () => {
           <div className="relative shrink-0">
             {activeConversation.product_thumbnail ? (
               <img 
-                src={`http://127.0.0.1:8000/uploads/${activeConversation.product_thumbnail}`} 
+                src={getImageUrl(activeConversation.product_thumbnail)} 
                 alt="Product" 
                 className="w-12 h-12 rounded-lg object-cover bg-slate-100"
               />

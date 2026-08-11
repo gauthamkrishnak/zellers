@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import SellItemModal from "../components/SellItemModal";
+import { API_BASE_URL, getImageUrl } from "../config";
 
 export default function MyListings() {
   const navigate = useNavigate();
@@ -53,7 +54,7 @@ export default function MyListings() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get("http://127.0.0.1:8000/my-listings", {
+      const response = await axios.get(`${API_BASE_URL}/my-listings`, {
         headers: getAuthHeaders(),
       });
       setListings(response.data || []);
@@ -77,7 +78,7 @@ export default function MyListings() {
     setDeleting(true);
     try {
       await axios.delete(
-        `http://127.0.0.1:8000/products/${deleteCandidate.id}`,
+        `${API_BASE_URL}/products/${deleteCandidate.id}`,
         {
           headers: getAuthHeaders(),
         },
@@ -101,7 +102,7 @@ export default function MyListings() {
     setBoostingItem(item.id);
     try {
       const initRes = await axios.post(
-        `http://127.0.0.1:8000/products/${item.id}/boost/initiate`,
+        `${API_BASE_URL}/products/${item.id}/boost/initiate`,
         {},
         { headers: getAuthHeaders() },
       );
@@ -116,7 +117,7 @@ export default function MyListings() {
         handler: async function (paymentResponse) {
           try {
             await axios.post(
-              `http://127.0.0.1:8000/products/${item.id}/boost/verify`,
+              `${API_BASE_URL}/products/${item.id}/boost/verify`,
               {
                 razorpay_order_id: paymentResponse.razorpay_order_id,
                 razorpay_payment_id: paymentResponse.razorpay_payment_id,
@@ -156,7 +157,7 @@ export default function MyListings() {
     setHistoryLoading(true);
     try {
       const res = await axios.get(
-        `http://127.0.0.1:8000/products/${item.id}/boost-history`,
+        `${API_BASE_URL}/products/${item.id}/boost-history`,
         { headers: getAuthHeaders() },
       );
       setBoostHistory(res.data || []);
@@ -345,7 +346,7 @@ export default function MyListings() {
                   )}
 
                   <img
-                    src={`http://127.0.0.1:8000/uploads/${item.image}`}
+                    src={getImageUrl(item.image)}
                     alt={item.title}
                     className={`max-w-full max-h-full object-contain transition-transform duration-300 ${
                       isSold ? "grayscale opacity-60" : "group-hover:scale-105"

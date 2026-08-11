@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useWishlist } from "../context/WishlistContext";
 import { useAuth } from "../context/AuthContext";
+import { API_BASE_URL, getImageUrl } from "../config";
 
 function ProductCard(props) {
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ function ProductCard(props) {
 
     try {
       const response = await axios.put(
-        `http://127.0.0.1:8000/products/${id}/wishlist`,
+        `${API_BASE_URL}/products/${id}/wishlist`,
         {},
         {
           headers: getAuthHeaders(),
@@ -99,7 +100,7 @@ function ProductCard(props) {
         )}
 
         <img
-          src={`http://127.0.0.1:8000/uploads/${image}`}
+          src={getImageUrl(image)}
           alt={title}
           className={`max-w-full max-h-full object-contain ${
             isSold

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { API_BASE_URL } from "../config";
 import {
   ShieldCheck,
   Lock,
@@ -41,7 +42,7 @@ export default function PaymentGateway() {
           params.product_id = parseInt(productId, 10);
         }
         const res = await axios.post(
-          "http://127.0.0.1:8000/checkout/initiate",
+          `${API_BASE_URL}/checkout/initiate`,
           params,
           { headers: getAuthHeaders(), params }
         );
@@ -81,7 +82,7 @@ export default function PaymentGateway() {
     setErrorMessage(null);
     try {
       const verifyRes = await axios.post(
-        "http://127.0.0.1:8000/checkout/verify",
+        `${API_BASE_URL}/checkout/verify`,
         {
           razorpay_order_id: orderData.razorpay_order_id,
           razorpay_payment_id: paymentId,
@@ -134,7 +135,7 @@ export default function PaymentGateway() {
         ondismiss: async function () {
           try {
             await axios.post(
-              "http://127.0.0.1:8000/checkout/failure",
+              `${API_BASE_URL}/checkout/failure`,
               {
                 razorpay_order_id: orderData.razorpay_order_id,
                 error_description: "Payment modal dismissed by user",

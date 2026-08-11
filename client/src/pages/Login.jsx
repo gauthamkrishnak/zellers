@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
+import { API_BASE_URL } from "../config";
 
 function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -26,14 +27,14 @@ function Login() {
 
     try {
       if (isRegistering) {
-        await axios.post("http://127.0.0.1:8000/register", {
+        await axios.post(`${API_BASE_URL}/register`, {
           email: form.email,
           password: form.password,
           username: form.username.trim() || form.email.split("@")[0],
         });
       }
 
-      const response = await axios.post("http://127.0.0.1:8000/login", {
+      const response = await axios.post(`${API_BASE_URL}/login`, {
         email: form.email,
         password: form.password,
       });

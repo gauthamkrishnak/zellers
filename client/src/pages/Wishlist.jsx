@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Heart, ArrowLeft } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
+import { API_BASE_URL } from "../config";
 
 function Wishlist() {
   const [loading, setLoading] = useState(true);
@@ -15,7 +16,7 @@ function Wishlist() {
 
   const fetchWishlist = async () => {
     try {
-      const response = await axios.get("http://127.0.0.1:8000/wishlist/", {
+      const response = await axios.get(`${API_BASE_URL}/wishlist/`, {
         headers: getAuthHeaders(),
       });
       const sorted = [...response.data].sort((a, b) => {

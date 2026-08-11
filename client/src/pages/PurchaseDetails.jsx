@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+import { API_BASE_URL, getImageUrl } from "../config";
 import {
   ArrowLeft,
   ShoppingBag,
@@ -45,7 +46,7 @@ export default function PurchaseDetails() {
     setError(null);
     try {
       const response = await axios.get(
-        "http://127.0.0.1:8000/orders/my-purchases",
+        `${API_BASE_URL}/orders/my-purchases`,
         { headers: getAuthHeaders() }
       );
       const found = response.data.find(
@@ -173,11 +174,7 @@ export default function PurchaseDetails() {
 
   const imgName =
     purchaseItem.snapshot_primary_image || purchaseItem.current_product_image;
-  const imgSrc = imgName
-    ? imgName.startsWith("http")
-      ? imgName
-      : `http://127.0.0.1:8000/uploads/${imgName}`
-    : null;
+  const imgSrc = imgName ? getImageUrl(imgName) : null;
 
   const displayTitle =
     purchaseItem.snapshot_product_title || purchaseItem.product_title;

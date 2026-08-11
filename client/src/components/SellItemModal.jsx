@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
+import { API_BASE_URL } from "../config";
 
 import { CATEGORIES, getBrandsForCategory } from "../constants/brands";
 export { CATEGORIES } from "../constants/brands";
@@ -258,7 +259,7 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
     data.append("image", image);
 
     try {
-      const response = await axios.post("http://127.0.0.1:8000/products/", data, {
+      const response = await axios.post(`${API_BASE_URL}/products/`, data, {
         headers: {
           Authorization: `Bearer ${token}`,
           // Do NOT manually set Content-Type: multipart/form-data so the browser includes boundary
@@ -269,7 +270,7 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
         setBoosting(true);
         try {
           const initRes = await axios.post(
-            `http://127.0.0.1:8000/products/${response.data.id}/boost/initiate`,
+            `${API_BASE_URL}/products/${response.data.id}/boost/initiate`,
             {},
             { headers: { Authorization: `Bearer ${token}` } }
           );
@@ -284,7 +285,7 @@ export default function SellItemModal({ isOpen, onClose, onSuccess }) {
             handler: async function (paymentResponse) {
               try {
                 const verifyRes = await axios.post(
-                  `http://127.0.0.1:8000/products/${response.data.id}/boost/verify`,
+                  `${API_BASE_URL}/products/${response.data.id}/boost/verify`,
                   {
                     razorpay_order_id: paymentResponse.razorpay_order_id,
                     razorpay_payment_id: paymentResponse.razorpay_payment_id,

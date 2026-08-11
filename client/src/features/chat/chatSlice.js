@@ -1,10 +1,11 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
+import { API_BASE_URL } from "../../config";
 
-const BASE = "http://127.0.0.1:8000/chat";
+const BASE = `${API_BASE_URL}/chat`;
 
 const authHeader = () => ({
-  Authorization: `Bearer ${localStorage.getItem("token")}`,
+  Authorization: `Bearer ${localStorage.getItem("access_token")}`,
 });
 
 // ─── Async Thunks ─────────────────────────────────────────────────────────────

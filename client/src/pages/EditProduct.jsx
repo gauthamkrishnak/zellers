@@ -13,6 +13,7 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { API_BASE_URL, getImageUrl } from "../config";
 import { CATEGORIES, CONDITIONS } from "../components/SellItemModal";
 import { getBrandsForCategory } from "../constants/brands";
 
@@ -79,7 +80,7 @@ export default function EditProduct() {
     setError("");
     setPermissionError(false);
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/products/${id}`, {
+      const res = await axios.get(`${API_BASE_URL}/products/${id}`, {
         headers: getAuthHeaders(),
       });
       const prod = res.data;
@@ -195,7 +196,7 @@ export default function EditProduct() {
     }
 
     try {
-      await axios.put(`http://127.0.0.1:8000/products/${id}`, data, {
+      await axios.put(`${API_BASE_URL}/products/${id}`, data, {
         headers: getAuthHeaders(),
       });
       navigate("/my-listings");
@@ -500,7 +501,7 @@ export default function EditProduct() {
                 />
               ) : existingImage ? (
                 <img
-                  src={`http://127.0.0.1:8000/uploads/${existingImage}`}
+                  src={getImageUrl(existingImage)}
                   alt="Current image"
                   className="max-h-full max-w-full object-contain rounded-xl"
                 />

@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { getImageUrl } from "../config";
 import {
   Trash2,
   ShoppingBag,
@@ -120,7 +121,7 @@ export default function Cart() {
                   >
                     <div className="w-full sm:w-28 h-28 bg-slate-50 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-slate-100 relative">
                       <img
-                        src={`http://127.0.0.1:8000/uploads/${item.image}`}
+                        src={getImageUrl(item.image)}
                         alt={item.title}
                         className={`max-w-full max-h-full object-contain transition-all ${
                           isSold ? "grayscale opacity-70" : ""

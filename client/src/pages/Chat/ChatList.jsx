@@ -4,6 +4,7 @@ import { fetchConversations } from "../../features/chat/chatSlice";
 import { Link } from "react-router-dom";
 import { MessageSquare, Package, Clock, CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { getImageUrl } from "../../config";
 
 const ChatList = () => {
   const dispatch = useDispatch();
@@ -64,7 +65,7 @@ const ChatList = () => {
                   <div className="relative shrink-0">
                     {conv.product_thumbnail ? (
                       <img 
-                        src={`http://127.0.0.1:8000/uploads/${conv.product_thumbnail}`} 
+                        src={getImageUrl(conv.product_thumbnail)} 
                         alt="Product" 
                         className="w-16 h-16 rounded-xl object-cover bg-slate-100"
                         onError={(e) => { e.target.src = "https://placehold.co/100x100?text=No+Image"; }}

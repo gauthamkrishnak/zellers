@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
+import { API_BASE_URL, getImageUrl } from "../config";
 import {
   ArrowLeft,
   MapPin,
@@ -45,7 +46,7 @@ function ProductDetails() {
     const fetchProduct = async () => {
       try {
         const response = await axios.get(
-          `http://127.0.0.1:8000/products/${id}`,
+          `${API_BASE_URL}/products/${id}`,
           { headers: getAuthHeaders() },
         );
 
@@ -55,7 +56,7 @@ function ProductDetails() {
         if (response.data.seller_id) {
           try {
             const revRes = await axios.get(
-              `http://127.0.0.1:8000/sellers/${response.data.seller_id}/reviews?limit=5`
+              `${API_BASE_URL}/sellers/${response.data.seller_id}/reviews?limit=5`
             );
             setRecentReviews(revRes.data.recent_reviews || []);
           } catch (e) {
@@ -81,7 +82,7 @@ function ProductDetails() {
 
     try {
       const response = await axios.put(
-        `http://127.0.0.1:8000/products/${id}/wishlist`,
+        `${API_BASE_URL}/products/${id}/wishlist`,
         {},
         { headers: getAuthHeaders() },
       );
@@ -238,7 +239,7 @@ function ProductDetails() {
               </div>
             )}
             <img
-              src={`http://127.0.0.1:8000/uploads/${product.image}`}
+              src={getImageUrl(product.image)}
               alt={product.title}
               className={`max-h-[320px] md:max-h-[440px] w-auto object-contain ${
                 isSold

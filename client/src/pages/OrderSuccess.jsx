@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { API_BASE_URL } from "../config";
 import {
   CheckCircle2,
   Package,
@@ -26,7 +27,7 @@ export default function OrderSuccess() {
     if (!orderId) return;
     const fetchOrder = async () => {
       try {
-        const res = await axios.get(`http://127.0.0.1:8000/orders/${orderId}`, {
+        const res = await axios.get(`${API_BASE_URL}/orders/${orderId}`, {
           headers: getAuthHeaders(),
         });
         setOrder(res.data);

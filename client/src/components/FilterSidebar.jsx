@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { CATEGORIES, CATEGORY_ITEMS } from "../constants/brands";
 import { CONDITIONS as SELL_CONDITIONS } from "./SellItemModal";
+import { API_BASE_URL } from "../config";
 
 export default function FilterSidebar({
   filters,
@@ -56,7 +57,7 @@ export default function FilterSidebar({
     const fetchBrands = async () => {
       setLoadingBrands(true);
       try {
-        const res = await axios.get("http://127.0.0.1:8000/filters/brands", {
+        const res = await axios.get(`${API_BASE_URL}/filters/brands`, {
           params: {
             category: filters.category !== "All" ? filters.category : undefined,
           },

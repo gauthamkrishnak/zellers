@@ -23,6 +23,7 @@ import {
   Lock,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { API_BASE_URL } from "../config";
 
 export default function Account() {
   const navigate = useNavigate();
@@ -45,11 +46,11 @@ export default function Account() {
       try {
         setLoading(true);
         const [response, ordersRes] = await Promise.all([
-          axios.get("http://127.0.0.1:8000/me", {
+          axios.get(`${API_BASE_URL}/me`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
           axios
-            .get("http://127.0.0.1:8000/orders/", {
+            .get(`${API_BASE_URL}/orders/`, {
               headers: { Authorization: `Bearer ${token}` },
             })
             .catch(() => ({ data: [] })),
